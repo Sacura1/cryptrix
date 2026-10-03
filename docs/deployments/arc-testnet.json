@@ -1,0 +1,21 @@
+{
+  "network": "Arc testnet",
+  "chainId": 5042002,
+  "usdc": "0x3600000000000000000000000000000000000000",
+  "deployer": "0x2FC9FC86A26008984f492f45d4D0e4a456adD90a",
+  "resolver": "0x19031e8f2df863b8796Fb2b4f19feC85efdF4C37",
+  "keeper": "0xC819B9B1592dD3E64Ea3115E6ed27c87b1009b38",
+  "gasSponsor": "0x790B2cc3650cdD573684D9a0005D67276f85375E",
+  "escrow": "0x56163d8A153f94AaF9c55643ECC619baa68724BB",
+  "factory": "0xF7E6bC1CFC1Bc146cBfFA3D0Ed5B8cFd4869ea61",
+  "escrowDeploymentBlock": "65156468",
+  "factoryDeploymentBlock": "65156475",
+  "escrowTransaction": "0xfb41b40fbd08f4003e49676a8c940871bea27b849ba877a2ef4b0bb39b5f53c5",
+  "factoryTransaction": "0xea6ab6630565b21c3f4614dab0e1ea96427244824121ee893d56fa570eabeb2b",
+  "solidity": "0.8.30",
+  "evmVersion": "cancun",
+  "optimizerRuns": 200,
+  "viaIR": true,
+  "audited": false,
+  "createdAt": "2026-10-02T18:14:38.968Z"
+}

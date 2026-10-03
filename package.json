@@ -1,0 +1,24 @@
+{
+  "name": "cryptrix",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "setup": "npm --prefix backend ci",
+    "dev": "npm --prefix backend run dev",
+    "start": "npm --prefix backend start",
+    "build": "npm --prefix backend run build",
+    "typecheck": "npm --prefix backend run typecheck",
+    "contracts:compile": "npm --prefix backend run contracts:compile",
+    "check": "npm --prefix backend run check",
+    "signer": "npm --prefix backend run signer",
+    "signer:start": "npm --prefix backend run signer:start",
+    "backup": "npm --prefix backend run backup --",
+    "arc:check": "npm --prefix backend run arc:check",
+    "ui:setup": "npm --prefix frontend ci",
+    "ui:dev": "npm --prefix frontend run dev",
+    "ui:build": "npm --prefix frontend run build",
+    "ui:preview": "npm --prefix frontend run preview",
+    "arc:deploy": "npm --prefix backend run arc:deploy",
+    "arc:verify": "npm --prefix backend run arc:verify"
+  }
+}

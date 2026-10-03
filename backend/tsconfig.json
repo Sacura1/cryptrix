@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "outDir": "dist",
+    "rootDir": ".",
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "src/**/*.ts",
+    "scripts/compile-contracts.ts",
+    "scripts/deploy-arc.ts",
+    "scripts/verify-arc.ts",
+    "scripts/arc-check.ts",
+    "scripts/backup.ts"
+  ],
+  "exclude": [
+    "src/testing/**",
+    "tests/**"
+  ]
+}

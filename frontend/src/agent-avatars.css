@@ -1,0 +1,189 @@
+.agent-avatar {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  background-size: 400% 400%;
+  background-repeat: no-repeat;
+  background-color: #1d3023;
+  border: 2px solid;
+  border-radius: 50%;
+  box-shadow:
+    inset 0 0 12px #0c180d66,
+    0 3px 8px #14201733;
+}
+.agent-avatar:not(.rush-portrait) {
+  width: 48px;
+  height: 48px;
+}
+.agent-avatar:not(.rush-portrait) > b {
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  padding: 1px 4px;
+  background: #203322;
+  border: 1px solid #ac925e;
+  border-radius: 3px;
+  color: #fff0c6;
+  font: 700 9px Manrope;
+}
+.mine-announcement-copy {
+  min-width: 0;
+}
+.mine-announcement-heading {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 3px 10px;
+  margin-bottom: 3px;
+}
+.mine-announcement-heading > b {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 700 17px 'Barlow Condensed';
+  color: #fff1c4;
+  letter-spacing: 0.3px;
+}
+.mine-announcement .mine-announcement-heading > span {
+  letter-spacing: 1px;
+}
+.rush-agent-event {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.rush-agent-event > div {
+  min-width: 0;
+  flex: 1;
+}
+.rush-agent-event > i {
+  width: 36px;
+  text-align: center;
+  color: #edc77b;
+  flex: none;
+}
+.rush-event-subject {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.rush-event-subject b {
+  color: #fff0bd;
+  overflow-wrap: anywhere;
+}
+.rush-event-subject time {
+  font-size: 10px;
+  color: #bbaa7d;
+  flex: none;
+}
+.rush-details .rush-agent-event p {
+  margin: 4px 0 0;
+  font-size: 11px;
+}
+.nft-avatar-card {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 30px;
+  margin: 24px 0;
+  border: 1px solid #a78a52;
+  border-radius: 8px;
+  background: radial-gradient(ellipse at 12% 0, #ad854524, transparent 65%), #efe4ca;
+  box-shadow: inset 0 0 0 4px #ad854511;
+}
+.nft-avatar-preview {
+  position: relative;
+  padding: 10px;
+  flex: none;
+}
+.nft-avatar-preview > span:last-child {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  color: #ecc371;
+  background: #35432a;
+  border: 1px solid #a78a52;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+}
+.nft-avatar-copy {
+  flex: 1;
+  min-width: 0;
+}
+.nft-avatar-status {
+  display: inline-block;
+  padding: 3px 8px;
+  border: 1px solid #8c7345;
+  color: #655126;
+  font: 700 12px 'Barlow Condensed';
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.nft-avatar-copy h3 {
+  font: 700 29px 'Barlow Condensed';
+  margin: 8px 0;
+  color: #293725;
+}
+.nft-avatar-copy p {
+  margin: 0;
+  color: #71664e;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.nft-avatar-mint {
+  padding: 13px 25px;
+  border: 1px solid #8e7c52;
+  border-radius: 3px;
+  background: #35432a;
+  color: #e5cf9d;
+  cursor: not-allowed;
+  font: 700 19px 'Barlow Condensed';
+  flex: none;
+}
+.nft-avatar-mint > span {
+  display: block;
+  font: 500 10px Manrope;
+  margin-top: 3px;
+  color: #bdb38d;
+}
+.nft-avatar-card.compact {
+  gap: 18px;
+  padding: 18px 22px;
+}
+.nft-avatar-card.compact h3 {
+  font-size: 23px;
+}
+@media (max-width: 600px) {
+  .mine-announcement .mine-event-avatar {
+    width: 36px;
+    height: 36px;
+  }
+  .mine-announcement-heading {
+    gap: 2px 6px;
+  }
+  .mine-announcement-heading > b {
+    font-size: 14px;
+  }
+  .nft-avatar-card,
+  .nft-avatar-card.compact {
+    flex-wrap: wrap;
+    gap: 15px;
+    padding: 18px;
+  }
+  .nft-avatar-copy h3 {
+    font-size: 24px;
+  }
+  .nft-avatar-copy {
+    flex-basis: calc(100% - 150px);
+  }
+  .nft-avatar-card.compact .nft-avatar-copy {
+    flex-basis: calc(100% - 110px);
+  }
+  .nft-avatar-mint {
+    width: 100%;
+  }
+}

@@ -1,0 +1,385 @@
+/* Match routes have their own minimal shell. The world fills the measured stage. */
+body:has(.spectator-shell) {
+  padding-bottom: 0;
+}
+.spectator-shell {
+  background: #182117;
+}
+.spectator-shell .match-page {
+  width: 100%;
+  max-width: none;
+  padding: 0;
+}
+.spectator-shell .match-heading {
+  height: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #eee3ce;
+  border-bottom: 1px solid #bcae8e;
+}
+.spectator-back {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 44px;
+}
+.spectator-shell .match-heading > div:first-of-type {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.spectator-shell .match-heading h1 {
+  font-size: 24px;
+  line-height: 1;
+  margin: 0;
+  order: -1;
+}
+.spectator-shell .match-heading .button-row {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+}
+.spectator-shell .match-heading .eyebrow,
+.spectator-shell .match-pot > span,
+.spectator-shell .match-pot small {
+  display: none;
+}
+.spectator-mode {
+  font-size: 9px;
+  color: #655e4d;
+  white-space: nowrap;
+}
+.spectator-shell .match-pot {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+.spectator-shell .match-pot > strong {
+  font: 700 16px 'Manrope';
+  white-space: nowrap;
+}
+.spectator-shell .match-pot > strong::after {
+  content: ' USDC pool';
+  font-size: 9px;
+  font-weight: 500;
+}
+.spectator-details-button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 44px;
+  font-size: 10px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.spectator-shell .match-layout {
+  display: block;
+  margin: 0;
+}
+.spectator-shell .match-stage {
+  height: calc(100svh - 44px);
+  min-height: 180px;
+  background: #202b1d;
+}
+.spectator-shell .match-stage .round-strip {
+  padding: 5px 16px;
+  background: #202b1d;
+  color: #eadabd;
+  font-size: 9px;
+  border: 0;
+}
+.spectator-shell .match-stage > .painted-arena {
+  border: 0;
+  border-radius: 0;
+  position: relative;
+  overflow: hidden;
+}
+.spectator-shell .painted-arena .board-viewport {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+}
+.spectator-shell .match-stage .illustrated-world {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  max-height: none;
+  display: block;
+}
+.spectator-shell .match-stage .arena-toolbar {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 5;
+  padding: 0;
+  border: 1px solid #b5a27466;
+  background: #1d291eee;
+  border-radius: 4px;
+}
+.spectator-shell .arena-toolbar > span,
+.spectator-shell .arena-legend,
+.spectator-shell .replay-duration {
+  display: none;
+}
+.spectator-shell .arena-toolbar > div {
+  display: flex;
+  gap: 0;
+}
+.spectator-shell .arena-toolbar .icon-button {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+}
+.spectator-shell .arena-toolbar .icon-button[aria-label='Zoom arena'],
+.spectator-shell .arena-toolbar .icon-button[aria-label='Fit arena'] {
+  display: none;
+}
+.sound-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: 700 10px 'Manrope';
+}
+.sound-control.enabled {
+  color: #ffd27e;
+}
+.spectator-shell .arena-toolbar .sound-control { font-size: 10px; font-weight: 700; letter-spacing: 0; }
+.arena-hud {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(740px, calc(100% - 36px));
+  z-index: 4;
+  pointer-events: none;
+}
+.spectator-shell .arena-hud .combat-scoreboard {
+  margin: 0;
+  gap: 32px;
+}
+.spectator-shell .arena-hud .combat-contender {
+  background: #192419ef;
+  color: #f6e7c6;
+  border-color: #bd9d6355;
+  min-height: 57px;
+  padding: 5px 10px;
+  gap: 9px;
+}
+.spectator-shell .arena-hud .contender-portrait {
+  display: none;
+}
+.spectator-shell .arena-hud .contender-name {
+  min-width: 65px;
+  flex: 0.7;
+}
+.spectator-shell .arena-hud .contender-name strong {
+  font-size: 25px;
+}
+.spectator-shell .arena-hud .contender-name > span {
+  color: #e8ca84;
+  font-size: 8px;
+  margin-top: 4px;
+}
+.spectator-shell .arena-hud .contender-vitals {
+  min-width: 110px;
+}
+.spectator-shell .arena-hud .contender-vitals > div {
+  margin: 4px 0;
+  gap: 6px;
+}
+.spectator-shell .arena-hud .contender-vitals span {
+  color: #e8d9b8;
+  font-size: 7px;
+}
+.spectator-shell .arena-hud .contender-vitals b {
+  font-size: 10px;
+}
+.spectator-shell .arena-hud .combat-versus {
+  display: block;
+  color: #f5deb0;
+  font-size: 20px;
+}
+.spectator-shell .match-stage .replay-controls {
+  background: #202b1d;
+  color: #eddcba;
+  border: 0;
+  padding: 5px 14px;
+  gap: 10px;
+  min-height: 54px;
+}
+.spectator-shell .replay-controls .button {
+  min-height: 44px;
+  padding: 8px 14px;
+  font-size: 10px;
+  background: #d9c499;
+  color: #20291b;
+  border-color: #d9c499;
+}
+.spectator-shell .replay-controls .icon-button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.spectator-shell .replay-controls select {
+  min-height: 44px;
+  background: #35402b;
+  color: #eedbbc;
+  border-color: #657249;
+}
+.spectator-shell .match-sidebar {
+  display: none;
+}
+.spectator-shell .details-open .match-sidebar {
+  display: block;
+  position: fixed;
+  right: 0;
+  top: 44px;
+  bottom: 0;
+  width: min(360px, 100%);
+  max-height: none;
+  z-index: 20;
+  margin: 0;
+  border-radius: 0;
+  background: var(--card);
+  box-shadow: -10px 0 30px #1118;
+  overflow: auto;
+}
+.spectator-shell .watch-footer,
+.spectator-shell .proof-details,
+.spectator-shell .result-panel,
+.spectator-shell .lobby-note,
+.spectator-shell .match-layout > div > .note {
+  margin: 0;
+  padding: 18px;
+  background: var(--paper);
+}
+.spectator-shell .proof-details {
+  border-radius: 0;
+}
+.spectator-shell .world-agent {
+  transition-duration: 0.95s;
+}
+@media (max-width: 780px) {
+  .spectator-shell .match-heading {
+    padding: 0 5px;
+    gap: 4px;
+  }
+  .spectator-shell .match-heading > div:first-of-type {
+    gap: 7px;
+  }
+  .spectator-shell .match-heading h1 {
+    font-size: 21px;
+  }
+  .spectator-shell .match-heading .outline-tag {
+    display: none;
+  }
+  .spectator-mode {
+    font-size: 7px;
+    white-space: normal;
+    max-width: 66px;
+    line-height: 1.4;
+  }
+  .spectator-shell .match-pot > strong {
+    font-size: 13px;
+  }
+  .spectator-shell .match-pot > strong::after {
+    content: ' USDC';
+    font-size: 7px;
+  }
+  .spectator-details-button {
+    font-size: 0;
+    padding: 0 8px;
+    min-width: 44px;
+  }
+  .arena-hud {
+    top: 8px;
+    width: calc(100% - 16px);
+  }
+  .spectator-shell .arena-hud .combat-scoreboard {
+    gap: 18px;
+  }
+  .spectator-shell .arena-hud .combat-contender {
+    display: flex;
+    min-height: 51px;
+    gap: 5px;
+    padding: 5px 7px;
+  }
+  .spectator-shell .arena-hud .contender-name {
+    min-width: 0;
+    flex: 0.7;
+  }
+  .spectator-shell .arena-hud .contender-name strong {
+    font-size: 19px;
+  }
+  .spectator-shell .arena-hud .contender-name > span {
+    font-size: 6px;
+    letter-spacing: 0;
+  }
+  .spectator-shell .arena-hud .contender-vitals {
+    min-width: 62px;
+    flex: 1;
+  }
+  .spectator-shell .arena-hud .contender-vitals span {
+    display: block;
+    width: 10px;
+    font-size: 0;
+  }
+  .spectator-shell .arena-hud .contender-vitals span::after {
+    content: 'HP';
+    font-size: 5px;
+  }
+  .spectator-shell .arena-hud .contender-vitals > div:last-child span::after {
+    content: 'EN';
+  }
+  .spectator-shell .arena-hud .contender-vitals b {
+    width: 28px;
+    font-size: 8px;
+  }
+  .spectator-shell .arena-hud .contender-vitals meter {
+    min-width: 22px;
+    height: 5px;
+  }
+  .spectator-shell .arena-hud .contender-vitals meter::-webkit-meter-bar {
+    height: 5px;
+  }
+  .spectator-shell .arena-hud .combat-versus {
+    font-size: 14px;
+  }
+  .spectator-shell .match-stage .round-strip {
+    font-size: 8px;
+    padding-inline: 10px;
+  }
+  .spectator-shell .match-stage .replay-controls {
+    gap: 5px;
+    padding: 5px 8px;
+  }
+  .spectator-shell .replay-controls .button {
+    padding: 6px 8px;
+    font-size: 8px;
+  }
+  .spectator-shell .replay-controls > span {
+    display: none;
+  }
+  .spectator-shell .arena-toolbar {
+    right: 6px;
+    bottom: 6px;
+  }
+  .sound-control {
+    padding-inline: 9px;
+    font-size: 9px;
+  }
+}

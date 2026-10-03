@@ -1,0 +1,97 @@
+.rush-preview {
+  background: url('/art/mine-terrain.webp') 0 0/200% 200%;
+  min-height: 170px;
+  isolation: isolate;
+}
+.rush-preview-miner {
+  position: absolute;
+  width: 145px;
+  height: 145px;
+  bottom: 25px;
+  left: 10%;
+  background: url('/art/miners-a.webp') 0 33.333%/400% 400%;
+  filter: drop-shadow(0 2px 3px #263c2e);
+  z-index: 2;
+}
+.rush-preview-gems {
+  position: absolute;
+  width: 95px;
+  height: 95px;
+  bottom: 12px;
+  right: 7%;
+  background: url('/art/mine-props.webp') 66.666% 0/400% 400%;
+  filter: drop-shadow(0 2px 3px #263c2e);
+}
+.rush-preview:before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(transparent, #21322255);
+}
+.rush-screen .rush-playback {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  height: 42px;
+  min-height: 42px;
+  align-self: stretch;
+  white-space: nowrap;
+}
+.rush-screen .rush-playback select {
+  width: 60px;
+  min-height: 26px;
+  height: 26px;
+  padding: 3px 5px;
+  margin: 0;
+  font-size: 10px;
+  color: #faecc7;
+  background: #314330;
+}
+.rush-screen .rush-playback input {
+  width: auto;
+  min-height: 5px;
+  height: 5px;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+}
+.rush-playback > span {
+  flex: none;
+}
+.rush-screen .rush-playback .rush-practice-note {
+  margin-left: 0;
+}
+.rush-header button,
+.rush-playback button {
+  min-height: 26px;
+}
+@media (max-width: 600px) {
+  .rush-standing strong {
+    font-size: 9px;
+  }
+  .rush-standing small {
+    font-size: 7px;
+  }
+  .rush-agent-score small {
+    font-size: 7px;
+  }
+}
+
+.rush-home-arena > .rush-preview {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 260px;
+}
+.rush-home-arena > .rush-preview .rush-preview-miner {
+  width: 230px;
+  height: 230px;
+  left: 20%;
+  bottom: 12%;
+}
+.rush-home-arena > .rush-preview .rush-preview-gems {
+  width: 140px;
+  height: 140px;
+  right: 18%;
+  bottom: 15%;
+}

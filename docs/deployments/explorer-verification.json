@@ -1,0 +1,33 @@
+{
+  "compiler": "0.8.30+commit.73712a01.Emscripten.clang",
+  "contracts": [
+    {
+      "name": "GameEscrow",
+      "address": "0x56163d8A153f94AaF9c55643ECC619baa68724BB",
+      "submission": {
+        "message": "OK",
+        "result": "56163d8a153f94aaf9c55643ecc619baa68724bb6abffaa1",
+        "status": "1"
+      },
+      "status": {
+        "message": "OK",
+        "result": "Pass - Verified",
+        "status": "1"
+      }
+    },
+    {
+      "name": "AgentAccountFactory",
+      "address": "0xF7E6bC1CFC1Bc146cBfFA3D0Ed5B8cFd4869ea61",
+      "submission": {
+        "message": "OK",
+        "result": "f7e6bc1cfc1bc146cbffa3d0ed5b8cfd4869ea616abffab3",
+        "status": "1"
+      },
+      "status": {
+        "message": "OK",
+        "result": "Pass - Verified",
+        "status": "1"
+      }
+    }
+  ]
+}
