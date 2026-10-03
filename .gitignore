@@ -31,20 +31,8 @@ frontend/scripts/.render-arena.mjs
 /frontend/public/art/miners-walk.webp
 /frontend/public/mark.svg
 /frontend/README.md
+# Keep documentation and validation reports local; retain the public contract manifest.
 /docs/*
-!/docs/koyeb-deployment.md
-!/docs/backend-api.md
-!/docs/backend-security.md
-!/docs/backend-operations.md
-!/docs/wallet-setup.md
-!/docs/hosted-agents.md
-!/docs/cache-rush-v2.md
-!/docs/postgres-readiness.md
-!/docs/game-rules.md
-!/docs/usdc-branding.md
 !/docs/deployments/
 /docs/deployments/*
 !/docs/deployments/arc-testnet.json
-!/docs/deployments/explorer-verification.json
-!/docs/deployments/arc-testnet-flow.json
-!/docs/deployments/validation.json
