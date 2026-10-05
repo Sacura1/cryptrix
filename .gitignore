@@ -40,3 +40,4 @@ frontend/scripts/.render-arena.mjs
 /docs/deployments/*
 !/docs/deployments/arc-testnet.json
 !/docs/deployments/arc-testnet-v1.json
+!/docs/deployments/arc-testnet-v2.json

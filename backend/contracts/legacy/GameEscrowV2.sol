@@ -12,8 +12,8 @@ contract GameEscrow is ReentrancyGuard {
     using SafeERC20 for IERC20;
     IERC20 public immutable usdc;
     address public immutable resolver;
-    uint256 public constant VERSION = 3;
-    uint256 public constant MIN_STAKE = 500_000;
+    uint256 public constant VERSION = 2;
+    uint256 public constant MIN_STAKE = 1_000_000;
     uint256 public constant MAX_STAKE = 5_000_000;
     bytes32[5] public openRooms;
     mapping(address => bytes32) public currentMatch;
@@ -70,7 +70,7 @@ contract GameEscrow is ReentrancyGuard {
     }
     function _createMatch(bytes32 id, uint8 game, uint256 stake, uint64 fillDeadline, uint32 playSeconds, bytes32 rulesHash, bytes32 equipmentCommitment) private {
         if (equipmentCommitment == bytes32(0)) revert InvalidTerms();
-        if (id == bytes32(0) || rulesHash == bytes32(0) || matches[id].status != Status.None || game > 1 || stake < MIN_STAKE || stake > MAX_STAKE || (stake != MIN_STAKE && stake % 1_000_000 != 0)) revert InvalidTerms();
+        if (id == bytes32(0) || rulesHash == bytes32(0) || matches[id].status != Status.None || game > 1 || stake < MIN_STAKE || stake > MAX_STAKE || stake % MIN_STAKE != 0) revert InvalidTerms();
         if (fillDeadline <= block.timestamp || fillDeadline > block.timestamp + 15 minutes || playSeconds < 60 || playSeconds > 1 hours) revert InvalidTerms();
         uint256 slot = 5;
         for (uint256 i; i < 5; ++i) {

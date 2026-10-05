@@ -25,7 +25,7 @@ export class TestnetWalletAdapter implements WalletAdapter {
     let last: Hex | undefined;
     for (const [index, tx] of transactions.entries()) {
       if (tx.chainId !== 5042002 || tx.value !== '0') throw new Error('Invalid transaction terms');
-      if (tx.amountUnits && (BigInt(tx.amountUnits) < 1_000_000n || BigInt(tx.amountUnits) > this.maxStake || BigInt(tx.amountUnits) % 1_000_000n !== 0n)) throw new Error('Stake outside wallet policy');
+      if (tx.amountUnits && (BigInt(tx.amountUnits) < 500_000n || BigInt(tx.amountUnits) > this.maxStake || (BigInt(tx.amountUnits) !== 500_000n && BigInt(tx.amountUnits) % 1_000_000n !== 0n))) throw new Error('Stake outside wallet policy');
       if (tx.to.toLowerCase() === USDC.toLowerCase()) {
         const decoded = decodeFunctionData({ abi: approvalAbi, data: tx.data });
         if (decoded.args[0].toLowerCase() !== this.escrow.toLowerCase() || decoded.args[1] !== BigInt(tx.amountUnits ?? '0')) throw new Error('Approval changed');

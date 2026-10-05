@@ -14,6 +14,7 @@ import { verifyResult } from './replay.js';
 import { miningRules } from './mining.js';
 import { miningCommandSchema } from './mining.js';
 import { agentGuide, openapi } from './discovery.js';
+import { PublicArena } from './public-arena.js';
 
 export interface AppOptions { database?: string; databaseUrl?: string; stateNamespace?: string; mode?: 'practice' | 'paid'; now?: () => number; chain?: ChainGateway; origin?: string; logger?: boolean; signing?: SigningService; opsToken?: string; allowedOrigins?: string[]; minimumRoundMs?: number; miningEnabled?: boolean; readiness?: () => { ready: boolean; checks: Record<string, boolean> }; trustedProxyHops?: number; proxyToken?: string }
 const address = z.string().regex(/^0x[0-9a-fA-F]{40}$/);
@@ -30,6 +31,7 @@ function key(req: FastifyRequest) { return z.string().parse(req.headers['idempot
 export async function buildApp(options: AppOptions = {}) {
   const store = await Store.open(options.database, options.databaseUrl, options.stateNamespace);
   const platform = new Platform(store, options.mode, options.now, options.chain, options.origin, options.minimumRoundMs, options.miningEnabled);
+  const publicArena = new PublicArena(platform);
   const app = Fastify({ trustProxy: options.trustedProxyHops ? (_address: string, hop: number) => hop < options.trustedProxyHops! : false, logger: options.logger ? { redact: ['req.headers.authorization', 'req.headers.cookie', 'req.headers.x-cryptrix-proxy', 'body.signature', 'runtimeToken', 'token'] } : false, bodyLimit: 16_384, requestTimeout: 30_000 });
   await app.register(rateLimit, { max: 120, timeWindow: '1 minute', keyGenerator: req => {
     // Independent authenticated agents may share one host/IP. Invalid tokens never bypass IP limits.
@@ -68,6 +70,8 @@ export async function buildApp(options: AppOptions = {}) {
     return reply.code(result.ready ? 200 : 503).send({ ...result, mode: platform.mode });
   });
   app.get('/config', () => ({ mode: platform.mode, chainId: platform.chain?.chainId ?? null, escrow: platform.chain?.escrow ?? null, usdc: platform.chain ? USDC : null, usdcDecimals: 6, stakes: STAKES, maxOpenRooms: MAX_OPEN_ROOMS, roomSize: 8, fillWindowMs: 900000, fundingWindowMs: 120000, publicSpectating: true, resultVerification: 'Server replay checked before trusted resolver signs', randomness: 'Server CSPRNG committed with offer; operator remains trusted' }));
+  app.get('/arena/stats', () => publicArena.stats());
+  app.get('/matches/:id/transfers', req => publicArena.transfers(matchId(req)));
   const ops = (req: FastifyRequest) => {
     if (!options.opsToken || !timingSafeEqual(Buffer.from(digest(bearer(req))), Buffer.from(digest(options.opsToken)))) throw new Fault(401, 'OPS_UNAUTHORISED', 'Supply the operations credential.');
   };

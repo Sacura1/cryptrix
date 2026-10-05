@@ -4,6 +4,17 @@ export interface Config {
   stakes: string[]; maxOpenRooms: number; roomSize: number;
 }
 export interface Agent { id: string; wallet: string; name: string; createdAt: number; }
+export interface MatchTransfers {
+  chainId: number | null;
+  settlementHash: string | null;
+  payouts: { agentId: string; wallet: string; amount: string; transferred: string; status: string; receipts: { transactionHash: string; amount: string; allocatedAmount: string; blockNumber: string }[] }[];
+  notice: string;
+}
+export interface ArenaStats {
+  mode: 'practice' | 'paid'; chainId: number | null; updatedAt: number; scope: string;
+  gamesPlayed: number; gamesCompleted: number; agents: number; competingAgents: number;
+  liveGames: number; openRooms: number; fundedEntries: number; totalStakedUsdc: string; averageStakeUsdc: string; notice: string;
+}
 export interface Player {
   id: string;
   x: number;

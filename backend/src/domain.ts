@@ -3,11 +3,12 @@ import type { MiningRecording } from './mining.js';
 
 export const GAME_IDS = ['flux-duel', 'cache-rush'] as const;
 export type GameId = typeof GAME_IDS[number];
-export const MIN_STAKE = 1_000_000;
+export const MIN_STAKE = 500_000;
 export const MAX_STAKE = 5_000_000;
-export const STAKES = ['1', '2', '3', '4', '5'] as const;
+export const LEGACY_STAKES = ['1', '2', '3', '4', '5'] as const;
+export const STAKES = ['0.5', ...LEGACY_STAKES] as const;
 export const MAX_OPEN_ROOMS = 5;
-export const RUSH_STAKE = 1_000_000;
+export const RUSH_STAKE = MIN_STAKE;
 export const MAX_ROUNDS = 20;
 export const ROUND_MS = 30_000;
 export const FILL_MS = 15 * 60_000;
@@ -34,7 +35,7 @@ export function formatUsdc(units: number): string {
 }
 export function stakeFor(game: GameId, value?: string): number {
   const stake = value === undefined ? (game === 'cache-rush' ? RUSH_STAKE : MIN_STAKE) : parseUsdc(value);
-  requireThat(stake >= MIN_STAKE && stake <= MAX_STAKE && stake % MIN_STAKE === 0, 'STAKE_RANGE', 'Choose a stake of 1, 2, 3, 4, or 5 USDC.', 400);
+  requireThat(stake >= MIN_STAKE && stake <= MAX_STAKE && (stake === MIN_STAKE || stake % 1_000_000 === 0), 'STAKE_RANGE', 'Choose a stake of 0.5, 1, 2, 3, 4, or 5 USDC.', 400);
   return stake;
 }
 export function capacity(game: GameId): number { return game === 'flux-duel' ? 2 : 8; }
@@ -54,7 +55,7 @@ export const legacyRules = (game: GameId) => ({
   rush: game === 'cache-rush' ? { board: 11, relics: 24, cargoCapacity: 5, heavyCargo: 3, vision: 2, scanVision: 4, timeoutAction: 'wait' } : undefined,
 });
 
-export const rules = (game: GameId, protocolVersion = 2) => protocolVersion === 1 ? legacyRules(game) : ({ ...legacyRules(game), protocolVersion: 2, stakeMin: '1.000000', stakeMax: '5.000000', stakes: STAKES, entryStake: 'creator-selected' });
+export const rules = (game: GameId, protocolVersion = 3) => protocolVersion === 1 ? legacyRules(game) : ({ ...legacyRules(game), protocolVersion, stakeMin: protocolVersion === 2 ? '1.000000' : '0.500000', stakeMax: '5.000000', stakes: protocolVersion === 2 ? LEGACY_STAKES : STAKES, entryStake: 'creator-selected' });
 
 // rankGroups are dense group IDs in original participant order, not ordinal positions.
 export function payoutUnits(game: GameId, stake: number, rankGroups: number[]): number[] {
@@ -99,7 +100,7 @@ export type Action = { type: 'move'; direction: 'north' | 'south' | 'east' | 'we
 export interface RoundRecord { round: number; actions: Record<string, Action>; events: string[]; state: GameState }
 export interface Match {
   title?: string;
-  protocolVersion?: 2; engineVersion?: 2; miningMapVersion?: 2 | 3; mining?: MiningRecording;
+  protocolVersion?: 2 | 3; engineVersion?: 2; miningMapVersion?: 2 | 3; mining?: MiningRecording;
   id: `0x${string}`; game: GameId; mode: 'practice' | 'paid'; status: MatchStatus;
   creatorId: string; stake: number; fundingDeadline?: number; fillDeadline: number; createdAt: number;
   seed: string; commitment: `0x${string}`; rulesHash: `0x${string}`; entries: Entry[];

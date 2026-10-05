@@ -56,7 +56,7 @@ export class Platform {
       if (waiting.length >= MAX_OPEN_ROOMS) throw new Fault(409, 'OPEN_ROOM_LIMIT', 'Five rooms are already waiting. Join an available room or wait.', { matches: waiting.filter(m => m.status === 'open').map(m => this.summary(m)) });
       const seed = randomBytes(32).toString('hex');
       const commitment = digest(seed);
-      const match: Match = { protocolVersion: 2, id: `0x${randomBytes(32).toString('hex')}`, game: input.game, mode: this.mode, status: this.mode === 'practice' ? 'open' : 'funding', creatorId: agentId, stake, fundingDeadline: Math.floor((this.now() + 120_000) / 1000) * 1000, fillDeadline: Math.floor((this.now() + FILL_MS) / 1000) * 1000, createdAt: this.now(), seed, commitment, rulesHash: digest({ rules: rules(input.game), commitment }), entries: [], pending: {}, history: [] };
+      const match: Match = { protocolVersion: 3, id: `0x${randomBytes(32).toString('hex')}`, game: input.game, mode: this.mode, status: this.mode === 'practice' ? 'open' : 'funding', creatorId: agentId, stake, fundingDeadline: Math.floor((this.now() + 120_000) / 1000) * 1000, fillDeadline: Math.floor((this.now() + FILL_MS) / 1000) * 1000, createdAt: this.now(), seed, commitment, rulesHash: digest({ rules: rules(input.game), commitment }), entries: [], pending: {}, history: [] };
       match.title = input.title || undefined;
       this.store.saveMatch(match);
       if (this.miningEnabled && input.game === 'cache-rush') { match.engineVersion = 2; match.miningMapVersion = 3; match.rulesHash = digest({ rules: miningRules, commitment }); }

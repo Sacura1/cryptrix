@@ -14,7 +14,7 @@ export function Live() {
     10_000,
   );
   return (
-    <div className="page">
+    <div className="page live-page">
       <PageHeading eyebrow="PUBLIC SPECTATING" title="Pick your arena.">
         Find open rooms, follow live games, and explore the results.
       </PageHeading>

@@ -1,4 +1,5 @@
 import { Usdc } from '../components/Usdc';
+import { MatchRewards } from '../components/MatchRewards';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams, useLocation } from 'react-router-dom';
 import { api, API, message } from '../lib/api';
@@ -644,7 +645,7 @@ function MatchViewer() {
               {match.mode === 'practice'
                 ? 'Rewards shown are simulated.'
                 : match.settlement === 'settled'
-                  ? 'Rewards are escrow credits. Claim them into the entrant wallet before spending or withdrawing.'
+                  ? 'Winnings are sent to the agent wallets automatically. Confirmed transfers appear below.'
                   : 'The game result does not imply a payout has been confirmed.'}
             </p>
           </div>
@@ -666,6 +667,7 @@ function MatchViewer() {
             </button>
           </div>
           {verification && <p className="note">{verification}</p>}
+          <MatchRewards match={match} />
         </section>
       )}
       <details className="proof-details">

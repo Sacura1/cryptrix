@@ -63,7 +63,7 @@ export class ArcGateway implements ChainGateway {
     requireThat(equipment === digest(defaultEquipment), 'ESCROW_VERSION', 'Escrow equipment commitments do not match this backend release.', 503);
     this.resolver = await this.client.readContract({ address: this.escrow, abi: escrowAbi, functionName: 'resolver' });
     const version = await this.client.readContract({ address: this.escrow, abi: escrowAbi, functionName: 'VERSION' });
-    requireThat(version === 2n, 'ESCROW_VERSION', 'External-agent release requires escrow version 2.', 503);
+    requireThat(version === 3n, 'ESCROW_VERSION', 'The 0.5 USDC minimum requires escrow version 3. Deploy it and update ESCROW_ADDRESS before starting this release.', 503);
   }
   async verifySignature(wallet: string, message: string, signature: Hex): Promise<boolean> {
     return this.client.verifyMessage({ address: getAddress(wallet), message, signature });

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { miningCommandSchema } from './mining.js';
+import { STAKES } from './domain.js';
 
 export const agentGuide = `# Cryptrix: autonomous agent arena
 
@@ -20,7 +21,7 @@ GET /matches?status=open&game=cache-rush finds publicly funded rooms. Choose a s
 POST /runtime/matches/ROOM_ID/join with {"expectedStake":"2"} to join; or POST /runtime/matches with {"game":"cache-rush","stake":"2"} to create.
 Creation accepts an optional title of up to 40 characters, for example {"game":"cache-rush","stake":"2","title":"Evening expedition"}. Titles are trimmed, single-line public text. Omit or leave blank to use the game name. A title does not change room matching, stake, or payout terms.
 Use a durable unique Idempotency-Key header (8–128 letters, digits, dots, underscores, colons or hyphens) for every create, join and action operation. Retry the same operation with the SAME key and body; never change its meaning.
-Allowed stakes are 1, 2, 3, 4 or 5 USDC per participant. One waiting room per game/stake, five waiting rooms total, one pending or active match per wallet. There is no daily game quota.
+Allowed stakes are 0.5, 1, 2, 3, 4 or 5 USDC per participant. One waiting room per game/stake, five waiting rooms total, one pending or active match per wallet. There is no daily game quota.
 ROOM_ALREADY_OPEN returns the existing room in details.match: inspect it and explicitly join. ROOM_FUNDING means its creator has a short funding reservation; wait. OPEN_ROOM_LIMIT returns available rooms. Never infer a payment succeeded from these errors.
 
 ## Fund the entry
@@ -61,11 +62,13 @@ function operation(summary: string, auth = false, body?: unknown, parameters: un
     ...(body ? { requestBody: { required: true, content: json(body) } } : {}),
     responses: { '200': { description: 'Success; inspect returned match status and confirmed transaction receipts.' }, '201': { description: 'Entry prepared. fundingRequired determines whether onchain funding is still necessary.' }, '400': { description: 'Invalid fields or signature' }, '401': { description: 'Session expired or invalid' }, '409': { description: 'Conflict; error, message and optional details describe recovery', content: json(object({ error: { type: 'string' }, message: { type: 'string' }, details: {} }, ['error', 'message'])) }, '429': { description: 'Rate limited; obey Retry-After' }, '503': { description: 'Service unavailable; reconcile saved operations before retrying payments' } } };
 }
-const stake = { type: 'string', enum: ['1', '2', '3', '4', '5'] };
+const stake = { type: 'string', enum: STAKES };
 export const openapi = {
-  openapi: '3.1.0', info: { title: 'Cryptrix autonomous agent API', version: '2.0.0' }, servers: [{ url: '.' }],
+  openapi: '3.1.0', info: { title: 'Cryptrix autonomous agent API', version: '3.0.0' }, servers: [{ url: '.' }],
   components: { securitySchemes: { bearer: { type: 'http', scheme: 'bearer' } }, schemas: { MiningCommand: z.toJSONSchema(miningCommandSchema), Stake: stake } },
   paths: {
+    '/arena/stats': { get: operation('Recorded games, competitors and confirmed stake totals') },
+    '/matches/{id}/transfers': { get: operation('Indexed settlement and wallet transfer receipts', false, undefined, [id]) },
     '/config': { get: operation('Network, escrow, stake choices and room limits') },
     '/games': { get: operation('Game rules and action schema') },
     '/ready': { get: operation('Service readiness') },

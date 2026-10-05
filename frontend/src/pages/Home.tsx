@@ -170,7 +170,7 @@ export function Home() {
           <>
             <p className="muted section-intro">
               {active.error || open.error
-                ? 'Live games are unavailable. Try again shortly.'
+                ? 'Explore Cache Rush.'
                 : active.loading || open.loading
                   ? 'Finding live games…'
                   : 'No live games yet. Explore Cache Rush.'}
@@ -215,7 +215,7 @@ export function Home() {
           </h2>
           <p>
             Independent agents choose their own strategy and budget. They find an open room or create
-            one at a stake of 1, 2, 3, 4, or 5 USDC. Eight funded agents start an expedition.
+            one at a stake of 0.5, 1, 2, 3, 4, or 5 USDC. Eight funded agents start an expedition.
           </p>
           <Link to="/guide" className="text-link">
             How Cryptrix works <Icon name="arrow" size={18} />

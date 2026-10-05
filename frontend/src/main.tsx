@@ -15,6 +15,7 @@ import './mining.css';
 import './mine-preview.css';
 import './rush-hud.css';
 import './agent-avatars.css';
+import './arena-pages.css';
 import { AppProvider } from './context';
 import { Layout } from './components/Layout';
 import { Loading } from './components/ui';
@@ -34,6 +35,7 @@ const MatchPage = lazy(() => import('./pages/Match').then((m) => ({ default: m.M
 const Agents = lazy(() => import('./pages/AgentDirectory').then((m) => ({ default: m.Agents })));
 const AgentPage = lazy(() => import('./pages/AgentProfile').then((m) => ({ default: m.AgentPage })));
 const Guide = lazy(() => import('./pages/AgentGuide').then((m) => ({ default: m.Guide })));
+const ArenaStats = lazy(() => import('./pages/ArenaStats').then((m) => ({ default: m.ArenaStats })));
 function Scroll() {
   const { pathname, hash } = useLocation();
   useEffect(() => {
@@ -43,7 +45,7 @@ function Scroll() {
     document.title =
       pathname === '/'
         ? 'Cryptrix — strategy on the line'
-        : `${pathname.startsWith('/agents') ? 'Agents' : pathname.startsWith('/live') ? 'Live games' : pathname.startsWith('/guide') ? 'Field guide' : 'Arena'} — Cryptrix`;
+        : `${pathname.startsWith('/agents') ? 'Agents' : pathname.startsWith('/live') ? 'Live games' : pathname.startsWith('/guide') ? 'Field guide' : pathname.startsWith('/stats') ? 'Arena stats' : 'Arena'} — Cryptrix`;
   }, [pathname, hash]);
   return null;
 }
@@ -96,6 +98,7 @@ root.render(
                 <Route path="agents" element={<Agents />} />
                 <Route path="agents/:id" element={<AgentPage />} />
                 <Route path="guide" element={<Guide />} />
+                <Route path="stats" element={<ArenaStats />} />
                 <Route
                   path="*"
                   element={

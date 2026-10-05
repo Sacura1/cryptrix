@@ -1,4 +1,5 @@
 import { Usdc } from '../components/Usdc';
+import { MatchRewards } from '../components/MatchRewards';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MineArena } from '../components/MineArena';
@@ -23,7 +24,6 @@ export function RushMatch({
   match,
   replay,
   replayMode,
-  connection,
   testFailure,
   testDiagnostics = false,
 }: {
@@ -214,11 +214,7 @@ export function RushMatch({
   async function verify() {
     try {
       const r = await api<{ verified: boolean }>(`/matches/${match.id}/verification`);
-      setVerification(
-        r.verified
-          ? 'Replay verified against engine inputs and committed rules.'
-          : 'Verification failed.',
-      );
+      setVerification(r.verified ? 'Replay checked.' : 'Verification failed.');
     } catch (error) {
       setVerification(message(error));
     }
@@ -243,7 +239,11 @@ export function RushMatch({
         </Link>
         <img className="rush-brand-mark" src="/art/cryptrix-emblem.webp" alt="Cryptrix" />
         <strong className="rush-room-title" title={match.title || 'Cache Rush'}>
-          {match.title || <>CACHE <em>RUSH</em></>}
+          {match.title || (
+            <>
+              CACHE <em>RUSH</em>
+            </>
+          )}
         </strong>
         <span className="rush-mode">
           {replayMode
@@ -317,7 +317,9 @@ export function RushMatch({
             <span>EXPEDITION FORMING</span>
             <h1>{match.filled} of 8 miners ready.</h1>
             <p>The four-minute clock starts when all eight agents enter.</p>
-            <Link to="/guide" className="button secondary">Agent integration · <Usdc>{Number(match.stake)}</Usdc> per seat</Link>
+            <Link to="/guide" className="button secondary">
+              Agent integration · <Usdc>{Number(match.stake)}</Usdc> per seat
+            </Link>
           </div>
         )}
         {state && (
@@ -488,16 +490,11 @@ export function RushMatch({
           </>
         ) : (
           <>
-            <i className="live-dot" />
-            <span>{connection}</span>
             {match.status === 'finished' && (
               <Link to={`/matches/${match.id}/replay`}>Watch replay</Link>
             )}
           </>
         )}
-        <span className="rush-practice-note">
-          {match.mode === 'practice' ? 'Practice · no real funds' : 'USDC escrow'}
-        </span>
       </footer>
       {details && (
         <div className="rush-detail-backdrop" onClick={() => setDetails(false)}>
@@ -558,7 +555,8 @@ export function RushMatch({
               </p>
               <p>
                 Top three banked scores share 60%, 25%, 15% of the filled pool. Ties share prizes
-                for occupied places. Stake: <Usdc simulated={match.mode === 'practice'}>{Number(match.stake)}</Usdc> per miner.
+                for occupied places. Stake:{' '}
+                <Usdc simulated={match.mode === 'practice'}>{Number(match.stake)}</Usdc> per miner.
               </p>
               <p>
                 A fresh seed creates each new expedition. Terrain, starting positions, stations,
@@ -658,39 +656,40 @@ export function RushMatch({
             </div>
             {match.status === 'finished' && (
               <div className="rush-menu-body" hidden={menuTab !== 'result'}>
-                <h3>Result proof</h3>
+                <MatchRewards match={match} />
+                <h3>Replay</h3>
                 <details className="rush-proof">
                   <summary>Replay verification hash</summary>
                   <p>{match.resultHash}</p>
                 </details>
-                {replay && (
-                  <button
-                    className="button secondary"
-                    onClick={() => {
-                      const link = document.createElement('a');
-                      link.href = URL.createObjectURL(
-                        new Blob([JSON.stringify(replay)], { type: 'application/json' }),
-                      );
-                      link.download = `cache-rush-${match.id}.json`;
-                      link.click();
-                      URL.revokeObjectURL(link.href);
-                    }}
-                  >
-                    Download replay
-                  </button>
-                )}
-                {!replayMode && (
-                  <button className="button secondary" onClick={() => void verify()}>
-                    Verify result
-                  </button>
-                )}
-                <p>{verification}</p>
-                {match.payouts?.map((p) => (
-                  <p key={p.agentId}>
-                    {names[p.agentId]}:{' '}
-                    <Usdc simulated={match.mode === 'practice'}>{Number(p.amount)}</Usdc>
+                <div className="result-proof-actions">
+                  {replay && (
+                    <button
+                      className="button secondary"
+                      onClick={() => {
+                        const link = document.createElement('a');
+                        link.href = URL.createObjectURL(
+                          new Blob([JSON.stringify(replay)], { type: 'application/json' }),
+                        );
+                        link.download = `cache-rush-${match.id}.json`;
+                        link.click();
+                        URL.revokeObjectURL(link.href);
+                      }}
+                    >
+                      Download replay
+                    </button>
+                  )}
+                  {!replayMode && (
+                    <button className="button secondary" onClick={() => void verify()}>
+                      Verify result
+                    </button>
+                  )}
+                </div>
+                {verification && (
+                  <p className="replay-check-status" role="status">
+                    {verification}
                   </p>
-                ))}
+                )}
               </div>
             )}
           </section>

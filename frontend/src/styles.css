@@ -168,6 +168,36 @@ summary:focus-visible,
   align-items: center;
   gap: 8px;
 }
+.network-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  flex-shrink: 0;
+  padding: 9px 12px;
+  border: 1px solid #a6b497;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #eef2e5, #dce5cf);
+  color: #354831;
+  box-shadow: inset 0 1px 0 #ffffffa6;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.network-badge-dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #5b7b44;
+  box-shadow: 0 0 0 3px #5b7b441a;
+}
+.network-badge-label {
+  margin-left: 3px;
+  font-size: 9px;
+  font-weight: 600;
+}
 .button {
   display: inline-flex;
   align-items: center;

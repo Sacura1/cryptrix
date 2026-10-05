@@ -6,14 +6,14 @@
   "resolver": "0x19031e8f2df863b8796Fb2b4f19feC85efdF4C37",
   "keeper": "0xC819B9B1592dD3E64Ea3115E6ed27c87b1009b38",
   "gasSponsor": "0x790B2cc3650cdD573684D9a0005D67276f85375E",
-  "version": 3,
-  "escrow": "0x935F0D82Cd4574405490421882649625C58da169",
-  "escrowDeploymentBlock": "65633285",
-  "escrowTransaction": "0xf48937c6843deda09aa18836c46c51ebad408bf91674ed6c601dc80e83e8ceff",
+  "version": 2,
+  "escrow": "0xE6716CE1a56486F7844582E3634F4a900B04ad26",
+  "escrowDeploymentBlock": "65261178",
+  "escrowTransaction": "0x41fc2ad408c8a76a35dfd4cc7a218ed45686e921c779c92da4aca5e40e1c3cb4",
   "solidity": "0.8.30",
   "evmVersion": "cancun",
   "optimizerRuns": 200,
   "viaIR": true,
   "audited": false,
-  "createdAt": "2026-10-05T13:38:54.448Z"
+  "createdAt": "2026-10-03T09:02:29.358Z"
 }

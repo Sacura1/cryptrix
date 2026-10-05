@@ -38,6 +38,7 @@ export function Icon({ name, size = 20 }: { name: string; size?: number }) {
       </>
     ),
     plus: <path d="M12 4v16M4 12h16" />,
+    stats: <><path d="M4 20h16M7 16V9M12 16V4M17 16v-5" /></>,
     sound: (
       <>
         <path d="m3 9 5 0 5-5v16l-5-5H3zM17 8c3 2 3 6 0 8" />

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { digest, requireThat, type Entry, type Position } from './domain.js';
+import { digest, requireThat, STAKES, type Entry, type Position } from './domain.js';
 
 export const MINING_MS = 240_000;
 export const MINING_STEP = 500;
@@ -13,8 +13,9 @@ export const legacyMiningRules = {
 export const generationTwoMiningRules = { ...legacyMiningRules, mapGeneration: 2, mapDesign: 'Fresh seeded terrain regions, spawns, extraction stations, clinics, treasure, hazards and hidden Crown each expedition.' };
 export const historicalMiningRules = { ...generationTwoMiningRules, mapGeneration: 3,
   deposits: 'Interior clue density 34%, outer clue density 18%; clues yield treasure 78% of the time. Unmarked sites yield hidden pockets 3.5% of the time. Spawn/station surroundings have no deposits. One hidden Crown remains worth 35.' };
-export const miningRules = { ...historicalMiningRules, protocolVersion: 2, stakeMin: '1.000000', stakeMax: '5.000000', stakes: ['1', '2', '3', '4', '5'], entryStake: 'creator-selected' };
-export const rulesForMining = (mapVersion = 1, protocolVersion = 1) => protocolVersion === 2 ? miningRules : mapVersion >= 3 ? historicalMiningRules : mapVersion === 2 ? generationTwoMiningRules : legacyMiningRules;
+export const protocolTwoMiningRules = { ...historicalMiningRules, protocolVersion: 2, stakeMin: '1.000000', stakeMax: '5.000000', stakes: ['1', '2', '3', '4', '5'], entryStake: 'creator-selected' };
+export const miningRules = { ...protocolTwoMiningRules, protocolVersion: 3, stakeMin: '0.500000', stakes: STAKES };
+export const rulesForMining = (mapVersion = 1, protocolVersion = 1) => protocolVersion === 3 ? miningRules : protocolVersion === 2 ? protocolTwoMiningRules : mapVersion >= 3 ? historicalMiningRules : mapVersion === 2 ? generationTwoMiningRules : legacyMiningRules;
 const target = z.object({ x: z.number().int().min(0).max(23), y: z.number().int().min(0).max(23) }).strict();
 export const miningCommandSchema = z.object({ type: z.enum(['mine', 'inspect', 'bank', 'recover', 'retreat', 'repel', 'treat', 'clear', 'wait']), target: target.optional() }).strict();
 export type MiningCommand = z.infer<typeof miningCommandSchema>;

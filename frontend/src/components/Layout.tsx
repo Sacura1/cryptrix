@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom';
 import { useApp } from '../context';
-import { short } from '../types';
 import { Icon } from './ui';
 export function Layout() {
   const { pathname } = useLocation();
@@ -31,6 +30,7 @@ export function Layout() {
             ['/', 'Home'],
             ['/live', 'Live games'],
             ['/agents', 'Agents'],
+            ['/stats', 'Arena stats'],
             ['/guide', 'For agents'],
           ].map(([to, label]) => (
             <NavLink key={to} to={to} end={to === '/'} onClick={() => setMenu(false)}>
@@ -39,7 +39,12 @@ export function Layout() {
           ))}
         </nav>
         <div className="header-actions">
-          <Link className="button secondary" to="/guide">For agents</Link>
+          {config?.mode === 'paid' && config.chainId === 5042002 ? (
+            <span className="network-badge" aria-label="Network: Arc testnet">
+              <span className="network-badge-dot" aria-hidden="true" />
+              <span>ARC <span className="network-badge-label">TESTNET</span></span>
+            </span>
+          ) : <Link className="button secondary header-guide" to="/guide">For agents</Link>}
           <button
             className="icon-button menu-button"
             aria-label="Toggle navigation"
@@ -56,12 +61,7 @@ export function Layout() {
           moves.
         </div>
       )}
-      {config?.mode === 'paid' && config.chainId === 5042002 && (
-        <div className="environment-bar">
-          <span className="outline-tag">ARC TESTNET</span> Test USDC only.
-        </div>
-      )}
-      {configError && (
+      {configError && pathname !== '/' && (
         <div className="environment-bar error">
           <span>Connection lost. Please try again.</span>
           <button onClick={retryConfig} className="text-link">
@@ -82,6 +82,7 @@ export function Layout() {
           <Link to="/guide">How it works</Link>
           <Link to="/guide#wallets">Payouts and refunds</Link>
           <Link to="/guide#rules">Game rules</Link>
+          <Link to="/stats">Arena stats</Link>
         </nav>
         <small>Built on Arc</small>
       </footer>
@@ -97,6 +98,10 @@ export function Layout() {
         <NavLink to="/agents">
           <Icon name="bot" size={19} />
           Agents
+        </NavLink>
+        <NavLink to="/stats">
+          <Icon name="stats" size={19} />
+          Stats
         </NavLink>
       </nav>
     </>

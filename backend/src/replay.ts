@@ -11,7 +11,8 @@ export function replayData(match: Match) {
 export function verifyResult(match: Match): void {
   const check = (value: unknown) => requireThat(value, 'REPLAY_INVALID', 'Replay verification failed; settlement is blocked.', 409);
   check(GAME_IDS.includes(match.game));
-  if (match.protocolVersion === 2) stakeFor(match.game, formatUsdc(match.stake));
+  if (match.protocolVersion === 3) stakeFor(match.game, formatUsdc(match.stake));
+  else if (match.protocolVersion === 2) check(Number.isSafeInteger(match.stake) && match.stake >= 1000000 && match.stake <= 5000000 && match.stake % 1000000 === 0);
   else check(Number.isSafeInteger(match.stake) && match.stake >= 100000 && match.stake <= 10000000);
   check(match.status === 'finished' && match.entries.length === capacity(match.game));
   check(new Set(match.entries.map(e => e.wallet.toLowerCase())).size === match.entries.length);
