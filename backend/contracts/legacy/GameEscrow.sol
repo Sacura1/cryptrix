@@ -12,11 +12,9 @@ contract GameEscrow is ReentrancyGuard {
     using SafeERC20 for IERC20;
     IERC20 public immutable usdc;
     address public immutable resolver;
-    uint256 public constant VERSION = 2;
-    uint256 public constant MIN_STAKE = 1_000_000;
-    uint256 public constant MAX_STAKE = 5_000_000;
-    bytes32[5] public openRooms;
-    mapping(address => bytes32) public currentMatch;
+    uint256 public constant MIN_STAKE = 100_000;
+    uint256 public constant MAX_STAKE = 10_000_000;
+    uint256 public constant RUSH_STAKE = 1_000_000;
     enum Status { None, Open, Active, Settled, Cancelled }
     struct Match {
         uint8 game;
@@ -41,9 +39,6 @@ contract GameEscrow is ReentrancyGuard {
     error NotResolver();
     error InvalidRanks();
     error NoCredit();
-    error RoomAlreadyOpen(bytes32 id);
-    error OpenRoomLimit();
-    error WalletBusy(bytes32 id);
     event MatchCreated(bytes32 indexed id, address indexed creator, uint8 game, uint256 stake, bytes32 rulesHash);
     event MatchJoined(bytes32 indexed id, address indexed entrant, uint8 slot);
     event EquipmentCommitted(bytes32 indexed id, address indexed entrant, bytes32 commitment);
@@ -64,25 +59,13 @@ contract GameEscrow is ReentrancyGuard {
     function createMatch(bytes32 id, uint8 game, uint256 stake, uint64 fillDeadline, uint32 playSeconds, bytes32 rulesHash) external nonReentrant {
         _createMatch(id, game, stake, fillDeadline, playSeconds, rulesHash, DEFAULT_EQUIPMENT);
     }
-    function createMatchWithEquipment(bytes32 id, uint8 game, uint256 stake, uint64 fillDeadline, uint32 playSeconds, bytes32 rulesHash, bytes32 equipmentCommitment, uint64 fundingDeadline) external nonReentrant {
-        if (block.timestamp >= fundingDeadline) revert WrongState();
+    function createMatchWithEquipment(bytes32 id, uint8 game, uint256 stake, uint64 fillDeadline, uint32 playSeconds, bytes32 rulesHash, bytes32 equipmentCommitment) external nonReentrant {
         _createMatch(id, game, stake, fillDeadline, playSeconds, rulesHash, equipmentCommitment);
     }
     function _createMatch(bytes32 id, uint8 game, uint256 stake, uint64 fillDeadline, uint32 playSeconds, bytes32 rulesHash, bytes32 equipmentCommitment) private {
         if (equipmentCommitment == bytes32(0)) revert InvalidTerms();
-        if (id == bytes32(0) || rulesHash == bytes32(0) || matches[id].status != Status.None || game > 1 || stake < MIN_STAKE || stake > MAX_STAKE || stake % MIN_STAKE != 0) revert InvalidTerms();
-        if (fillDeadline <= block.timestamp || fillDeadline > block.timestamp + 15 minutes || playSeconds < 60 || playSeconds > 1 hours) revert InvalidTerms();
-        uint256 slot = 5;
-        for (uint256 i; i < 5; ++i) {
-            bytes32 existing = openRooms[i];
-            if (existing != bytes32(0) && matches[existing].fillDeadline <= block.timestamp) _refund(existing, matches[existing]);
-            if (openRooms[i] == bytes32(0)) { slot = i; continue; }
-            if (matches[existing].game == game && matches[existing].stake == stake) revert RoomAlreadyOpen(existing);
-        }
-        if (slot == 5) revert OpenRoomLimit();
-        _available(msg.sender);
-        openRooms[slot] = id;
-        currentMatch[msg.sender] = id;
+        if (id == bytes32(0) || rulesHash == bytes32(0) || matches[id].status != Status.None || game > 1 || stake < MIN_STAKE || stake > MAX_STAKE || (game == 1 && stake != RUSH_STAKE)) revert InvalidTerms();
+        if (fillDeadline <= block.timestamp || fillDeadline > block.timestamp + 1 days || playSeconds < 60 || playSeconds > 1 days) revert InvalidTerms();
         Match storage m = matches[id];
         m.game = game; m.stake = stake; m.status = Status.Open;
         m.fillDeadline = fillDeadline; m.playSeconds = playSeconds; m.rulesHash = rulesHash;
@@ -104,8 +87,6 @@ contract GameEscrow is ReentrancyGuard {
         Match storage m = matches[id];
         if (m.status != Status.Open || block.timestamp >= m.fillDeadline || expectedStake != m.stake) revert WrongState();
         for (uint256 i; i < m.participants.length; ++i) if (m.participants[i] == msg.sender) revert DuplicateEntrant();
-        _available(msg.sender);
-        currentMatch[msg.sender] = id;
         uint8 slot = uint8(m.participants.length);
         m.participants.push(msg.sender);
         equipmentCommitments[id][msg.sender] = equipmentCommitment;
@@ -113,7 +94,6 @@ contract GameEscrow is ReentrancyGuard {
         emit MatchJoined(id, msg.sender, slot);
         emit EquipmentCommitted(id, msg.sender, equipmentCommitment);
         if (m.participants.length == capacity(m.game)) {
-            _releaseRoom(id);
             m.status = Status.Active;
             m.resolveDeadline = uint64(block.timestamp + m.playSeconds);
             emit MatchStarted(id, m.resolveDeadline);
@@ -141,7 +121,6 @@ contract GameEscrow is ReentrancyGuard {
         }
         for (uint256 g; g <= maxGroup; ++g) if (counts[g] == 0) revert InvalidRanks();
         m.status = Status.Settled;
-        for (uint256 i; i < n; ++i) delete currentMatch[m.participants[i]];
         resultHashes[id] = resultHash;
         settledRanks[id] = rankGroups;
         uint256 pot = m.stake * n;
@@ -179,37 +158,16 @@ contract GameEscrow is ReentrancyGuard {
         _refund(id, m);
     }
     function _refund(bytes32 id, Match storage m) private {
-        _releaseRoom(id);
         m.status = Status.Cancelled;
-        for (uint256 i; i < m.participants.length; ++i) {
-            credits[m.participants[i]] += m.stake;
-            delete currentMatch[m.participants[i]];
-        }
+        for (uint256 i; i < m.participants.length; ++i) credits[m.participants[i]] += m.stake;
         emit MatchCancelled(id);
-    }
-    function _releaseRoom(bytes32 id) private {
-        for (uint256 i; i < 5; ++i) if (openRooms[i] == id) delete openRooms[i];
-    }
-    function _available(address entrant) private {
-        bytes32 previous = currentMatch[entrant];
-        if (previous == bytes32(0)) return;
-        Match storage m = matches[previous];
-        if ((m.status == Status.Open && block.timestamp >= m.fillDeadline) || (m.status == Status.Active && block.timestamp >= m.resolveDeadline)) _refund(previous, m);
-        else revert WalletBusy(previous);
     }
     /// @notice Recipient is fixed to the credited entrant. One failed transfer cannot freeze others.
     function claim() external nonReentrant {
-        _claim(msg.sender);
-    }
-    /// @notice Anyone may pay gas, but nobody can change the beneficiary.
-    function claimFor(address entrant) external nonReentrant {
-        if (credits[entrant] != 0) _claim(entrant);
-    }
-    function _claim(address entrant) private {
-        uint256 amount = credits[entrant];
+        uint256 amount = credits[msg.sender];
         if (amount == 0) revert NoCredit();
-        credits[entrant] = 0;
-        usdc.safeTransfer(entrant, amount);
-        emit CreditClaimed(entrant, amount);
+        credits[msg.sender] = 0;
+        usdc.safeTransfer(msg.sender, amount);
+        emit CreditClaimed(msg.sender, amount);
     }
 }

@@ -1,14 +1,12 @@
-import { Usdc } from './Usdc';
 import { useState } from 'react';
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom';
 import { useApp } from '../context';
 import { short } from '../types';
-import { Connect, Icon } from './ui';
+import { Icon } from './ui';
 export function Layout() {
   const { pathname } = useLocation();
-  const { config, configError, retryConfig, session, disconnect, practiceWallet } = useApp();
-  const [connecting, setConnecting] = useState(false),
-    [menu, setMenu] = useState(false);
+  const { config, configError, retryConfig } = useApp();
+  const [menu, setMenu] = useState(false);
   if (/^\/(matches|demo|test)\//.test(pathname)) {
     return (
       <div className="spectator-shell">
@@ -32,7 +30,8 @@ export function Layout() {
           {[
             ['/', 'Home'],
             ['/live', 'Live games'],
-            ['/agents', 'My agents'],
+            ['/agents', 'Agents'],
+            ['/guide', 'For agents'],
           ].map(([to, label]) => (
             <NavLink key={to} to={to} end={to === '/'} onClick={() => setMenu(false)}>
               {label}
@@ -40,22 +39,7 @@ export function Layout() {
           ))}
         </nav>
         <div className="header-actions">
-          {session ? (
-            <button
-              className="button secondary wallet-button"
-              onClick={disconnect}
-              title="Sign out"
-            >
-              <Icon name="wallet" size={17} />
-              {short(session.owner)}
-              <span className="wallet-disconnect">Sign out</span>
-            </button>
-          ) : (
-            <button className="button secondary wallet-button" onClick={() => setConnecting(true)}>
-              <Icon name="wallet" size={17} />
-              <span>Connect wallet</span>
-            </button>
-          )}
+          <Link className="button secondary" to="/guide">For agents</Link>
           <button
             className="icon-button menu-button"
             aria-label="Toggle navigation"
@@ -69,7 +53,7 @@ export function Layout() {
       {config?.mode === 'practice' && (
         <div className="environment-bar">
           <span className="outline-tag">PRACTICE</span> Stakes and rewards are simulated. No USDC
-          moves.{practiceWallet && <span className="practice-extra">Temporary local wallet</span>}
+          moves.
         </div>
       )}
       {config?.mode === 'paid' && config.chainId === 5042002 && (
@@ -93,13 +77,13 @@ export function Layout() {
           <img src="/art/cryptrix-emblem.webp" alt="" />
           CRYPTRIX
         </Link>
-        <p>Strategy on the line.</p>
+        <p>Autonomous agents. Stake USDC. Compete to win.</p>
         <nav aria-label="Footer">
           <Link to="/guide">How it works</Link>
-          <Link to="/guide#wallets">Wallet ownership</Link>
+          <Link to="/guide#wallets">Payouts and refunds</Link>
           <Link to="/guide#rules">Game rules</Link>
         </nav>
-        <small>Arc · <Usdc /></small>
+        <small>Built on Arc</small>
       </footer>
       <nav className="mobile-bottom" aria-label="Mobile navigation">
         <NavLink to="/" end>
@@ -115,7 +99,6 @@ export function Layout() {
           Agents
         </NavLink>
       </nav>
-      {connecting && <Connect onClose={() => setConnecting(false)} />}
     </>
   );
 }

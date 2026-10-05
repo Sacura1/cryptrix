@@ -20,7 +20,8 @@
     "scripts/deploy-arc.ts",
     "scripts/verify-arc.ts",
     "scripts/arc-check.ts",
-    "scripts/backup.ts"
+    "scripts/backup.ts",
+    "examples/**/*.ts"
   ],
   "exclude": [
     "src/testing/**",

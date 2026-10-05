@@ -3,19 +3,20 @@ import { actionSchema, equipmentSchema, initialise, resolveRound, validateAction
 import { acceptMining, advanceMining, initialiseMining, MINING_MS, miningFrame, miningRanks, rulesForMining, publicMining, type MiningFrame } from './mining.js';
 
 export function replayData(match: Match) {
-  if (match.engineVersion === 2 && match.mining) return { version: 2, matchId: match.id, rules: rulesForMining(match.miningMapVersion ?? 1), seed: match.seed, seedCommitment: match.commitment,
+  if (match.engineVersion === 2 && match.mining) return { version: 2, matchId: match.id, rules: rulesForMining(match.miningMapVersion ?? 1, match.protocolVersion ?? 1), seed: match.seed, seedCommitment: match.commitment,
     rulesHash: match.rulesHash, entries: match.entries, initialState: publicMining(initialiseMining(match.entries, match.seed, match.miningMapVersion ?? 1)),
     inputs: match.mining.inputs, frames: match.mining.frames, ranks: match.ranks, payouts: match.payouts };
-  return { version: 1, matchId: match.id, rules: rules(match.game), seed: match.seed, seedCommitment: match.commitment, rulesHash: match.rulesHash, entries: match.entries, rounds: match.history, ranks: match.ranks, payouts: match.payouts };
+  return { version: 1, matchId: match.id, rules: rules(match.game, match.protocolVersion ?? 1), seed: match.seed, seedCommitment: match.commitment, rulesHash: match.rulesHash, entries: match.entries, rounds: match.history, ranks: match.ranks, payouts: match.payouts };
 }
 export function verifyResult(match: Match): void {
   const check = (value: unknown) => requireThat(value, 'REPLAY_INVALID', 'Replay verification failed; settlement is blocked.', 409);
   check(GAME_IDS.includes(match.game));
-  stakeFor(match.game, formatUsdc(match.stake));
+  if (match.protocolVersion === 2) stakeFor(match.game, formatUsdc(match.stake));
+  else check(Number.isSafeInteger(match.stake) && match.stake >= 100000 && match.stake <= 10000000);
   check(match.status === 'finished' && match.entries.length === capacity(match.game));
   check(new Set(match.entries.map(e => e.wallet.toLowerCase())).size === match.entries.length);
   check(new Set(match.entries.map(e => e.agentId)).size === match.entries.length);
-  check(digest(match.seed) === match.commitment && digest({ rules: match.engineVersion === 2 ? rulesForMining(match.miningMapVersion ?? 1) : rules(match.game), commitment: match.commitment }) === match.rulesHash);
+  check(digest(match.seed) === match.commitment && digest({ rules: match.engineVersion === 2 ? rulesForMining(match.miningMapVersion ?? 1, match.protocolVersion ?? 1) : rules(match.game, match.protocolVersion ?? 1), commitment: match.commitment }) === match.rulesHash);
   for (const entry of match.entries) { equipmentSchema.parse(entry.equipment); equipmentCommitment(entry.equipment, entry.equipmentSalt); }
   if (match.engineVersion === 2) {
     check(match.game === 'cache-rush' && match.mining && match.history.length === 0 && !match.state);

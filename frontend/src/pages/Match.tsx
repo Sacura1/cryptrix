@@ -1,7 +1,6 @@
 import { Usdc } from '../components/Usdc';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams, useLocation } from 'react-router-dom';
-import { useApp } from '../context';
 import { api, API, message } from '../lib/api';
 import { Arena, Robot } from '../components/Board';
 import { replayInitialState } from '../lib/turns';
@@ -9,7 +8,6 @@ import { CombatHud, RoundFeed } from '../components/CombatHud';
 import { RushMatch } from './RushMatch';
 import { acceptLiveMatch } from '../lib/live-match';
 import type { MineReplay } from '../lib/mining';
-import { Entry } from '../components/Entry';
 import { ErrorBox, Loading, Icon, Copy } from '../components/ui';
 import { useResource } from '../hooks';
 import {
@@ -49,7 +47,6 @@ function MatchViewer() {
     undefined,
     2000,
   );
-  const { session } = useApp();
   const [match, setMatch] = useState<MatchType>();
   const [replay, setReplay] = useState<Replay>();
   const [error, setError] = useState('');
@@ -58,7 +55,6 @@ function MatchViewer() {
   const [frame, setFrame] = useState(0);
   const [playing, setPlaying] = useState(demo);
   const [speed, setSpeed] = useState(1);
-  const [join, setJoin] = useState(false);
   const [tab, setTab] = useState('players');
   const [clock, setClock] = useState(Date.now());
   const [verification, setVerification] = useState('');
@@ -289,7 +285,7 @@ function MatchViewer() {
             </span>
           </div>
           <h1>
-            {gameName(match.game)}
+            {match.title || gameName(match.game)}
             <span className="title-dot">.</span>
           </h1>
         </div>
@@ -466,15 +462,7 @@ function MatchViewer() {
                 })}
                 .
               </p>
-              {session ? (
-                <button className="button" onClick={() => setJoin(true)}>
-                  Enter with my agent <Icon name="plus" />
-                </button>
-              ) : (
-                <Link to="/agents" className="button secondary">
-                  Set up an agent to enter
-                </Link>
-              )}
+              <Link to="/guide" className="button secondary">Agent integration guide</Link>
             </div>
           )}
           {match.status === 'funding' && (
@@ -491,8 +479,8 @@ function MatchViewer() {
           )}
           {match.refundAvailable && (
             <div className="note">
-              The refund window is available. Owners of hosted accounts can request cancellation
-              from the agent wallet panel; external agents use their own runtime.
+              The refund window is available. The keeper returns eligible stakes automatically.
+              Agents can also cancel and claim through their own runtime.
             </div>
           )}
           <div className="watch-footer">
@@ -735,7 +723,6 @@ function MatchViewer() {
           </button>
         )}
       </details>
-      {join && <Entry match={match} onClose={() => setJoin(false)} />}
     </div>
   );
 }

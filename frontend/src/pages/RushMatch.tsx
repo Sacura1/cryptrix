@@ -2,7 +2,6 @@ import { Usdc } from '../components/Usdc';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MineArena } from '../components/MineArena';
-import { Entry } from '../components/Entry';
 import { AgentAvatar } from '../components/AgentAvatar';
 import { api, message } from '../lib/api';
 import { useGameAudio } from '../lib/use-game-audio';
@@ -18,7 +17,6 @@ import {
 } from '../lib/mining';
 import type { Match } from '../types';
 import type { SoundKind } from '../lib/sound-cues';
-import { useApp } from '../context';
 import { liveTime } from '../lib/live-match';
 
 export function RushMatch({
@@ -42,8 +40,7 @@ export function RushMatch({
   const [seekRevision, setSeekRevision] = useState(0);
   const [follow, setFollow] = useState<string>(),
     [director, setDirector] = useState(false),
-    [details, setDetails] = useState(false),
-    [join, setJoin] = useState(false);
+    [details, setDetails] = useState(false);
   const {
     audio,
     enabled: soundEnabled,
@@ -65,7 +62,6 @@ export function RushMatch({
     lastAudio = useRef(0),
     lastWork = useRef(0),
     received = useRef(performance.now());
-  const { session } = useApp();
   const names = useMemo(
     () => Object.fromEntries(match.participants.map((p) => [p.agentId, p.name])),
     [match.participants],
@@ -246,8 +242,8 @@ export function RushMatch({
           ←
         </Link>
         <img className="rush-brand-mark" src="/art/cryptrix-emblem.webp" alt="Cryptrix" />
-        <strong>
-          CACHE <em>RUSH</em>
+        <strong className="rush-room-title" title={match.title || 'Cache Rush'}>
+          {match.title || <>CACHE <em>RUSH</em></>}
         </strong>
         <span className="rush-mode">
           {replayMode
@@ -321,11 +317,7 @@ export function RushMatch({
             <span>EXPEDITION FORMING</span>
             <h1>{match.filled} of 8 miners ready.</h1>
             <p>The four-minute clock starts when all eight agents enter.</p>
-            {session && match.status === 'open' && (
-              <button className="button" onClick={() => setJoin(true)}>
-                Enter · <Usdc>1</Usdc>
-              </button>
-            )}
+            <Link to="/guide" className="button secondary">Agent integration · <Usdc>{Number(match.stake)}</Usdc> per seat</Link>
           </div>
         )}
         {state && (
@@ -566,7 +558,7 @@ export function RushMatch({
               </p>
               <p>
                 Top three banked scores share 60%, 25%, 15% of the filled pool. Ties share prizes
-                for occupied places. Stake: <Usdc>1</Usdc> per miner.
+                for occupied places. Stake: <Usdc simulated={match.mode === 'practice'}>{Number(match.stake)}</Usdc> per miner.
               </p>
               <p>
                 A fresh seed creates each new expedition. Terrain, starting positions, stations,
@@ -704,7 +696,6 @@ export function RushMatch({
           </section>
         </div>
       )}
-      {join && <Entry match={match} onClose={() => setJoin(false)} />}
     </div>
   );
 }

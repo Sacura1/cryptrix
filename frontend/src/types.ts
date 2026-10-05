@@ -1,35 +1,9 @@
 export type Game = 'flux-duel' | 'cache-rush';
-export type Strategy = 'aggressive' | 'defensive' | 'explorer';
 export interface Config {
-  mode: 'practice' | 'paid';
-  chainId: number | null;
-  escrow: string | null;
-  hostedDecisions: 'strategy' | 'model' | 'disabled';
-  hostedSigning: boolean;
-  gamesPerDay?: number;
-  hostedTier?: { agentsPerOwner: number; gamesPerDay: number; requestsPerDay: number };
+  mode: 'practice' | 'paid'; chainId: number | null; escrow: string | null;
+  stakes: string[]; maxOpenRooms: number; roomSize: number;
 }
-export interface Limits {
-  maxStake: string;
-  dailyStake: string;
-  gamesPerDay: number;
-  allowedGames: Game[];
-  expiresAt?: number;
-}
-export interface Agent {
-  id: string;
-  owner: string;
-  wallet: string;
-  name: string;
-  kind: 'hosted' | 'external';
-  strategy: Strategy;
-  instructions: string;
-  automatic: boolean;
-  limits: Limits;
-  usage: { grossStake: string; games: number; requests?: number; nextReset: number };
-  modelUsage: { allowance: number; input_tokens: number; output_tokens: number };
-  hostedDecisions: string;
-}
+export interface Agent { id: string; wallet: string; name: string; createdAt: number; }
 export interface Player {
   id: string;
   x: number;
@@ -53,6 +27,7 @@ export type TurnAction =
   | { type: 'move'; direction: 'north' | 'south' | 'east' | 'west' }
   | { type: 'attack' | 'shield' | 'scan' | 'recharge' | 'wait' | 'collect' | 'deposit' };
 export interface Match {
+  title?: string;
   engineVersion?: number;
   id: string;
   game: Game;

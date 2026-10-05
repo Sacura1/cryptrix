@@ -7,13 +7,13 @@ import type { Store } from './store.js';
 export const newToken = () => randomBytes(32).toString('base64url');
 export class Auth {
   constructor(private store: Store, private origin: string, private now: () => number, private chain?: ChainGateway) {}
-  challenge(address: string, scope: 'signin' | 'link-wallet' = 'signin', owner = '') {
+  challenge(address: string) {
     const wallet = getAddress(address).toLowerCase();
     const id = randomUUID();
     const expiresAt = this.now() + 5 * 60_000;
-    const message = `Cryptrix ${scope === 'signin' ? 'sign in' : 'link agent wallet'}\nOrigin: ${this.origin}\nWallet: ${wallet}\nOwner: ${owner || wallet}\nChain: ${this.chain?.chainId ?? 'practice'}\nNonce: ${id}\nExpires: ${new Date(expiresAt).toISOString()}\nThis signature grants no spending permission.`;
+    const message = `Cryptrix agent sign in\nOrigin: ${this.origin}\nWallet: ${wallet}\nChain: ${this.chain?.chainId ?? 'practice'}\nNonce: ${id}\nExpires: ${new Date(expiresAt).toISOString()}\nThis signature grants no spending permission.`;
     this.store.db.prepare('DELETE FROM challenges WHERE expires_at < ?').run(this.now() - 60_000);
-    this.store.db.prepare('INSERT INTO challenges VALUES(?,?,?,?,0,?,?)').run(id, wallet, message, expiresAt, scope, owner || wallet);
+    this.store.db.prepare('INSERT INTO challenges VALUES(?,?,?,?,0,?,?)').run(id, wallet, message, expiresAt, 'signin', wallet);
     return { challengeId: id, message, expiresAt };
   }
   async consume(id: string, signature: Hex, scope: string, owner?: string): Promise<string> {
@@ -29,23 +29,23 @@ export class Auth {
     return row.wallet;
   }
   async signIn(id: string, signature: Hex) {
-    const owner = await this.consume(id, signature, 'signin');
-    const token = newToken();
-    const expiresAt = this.now() + 8 * 3600_000;
-    this.store.db.prepare('DELETE FROM sessions WHERE expires_at<=?').run(this.now());
-    this.store.db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(digest(token), owner, expiresAt);
-    return { token, owner, expiresAt };
-  }
-  owner(token: string): string {
-    const row = this.store.db.prepare('SELECT owner FROM sessions WHERE hash=? AND expires_at>?').get(digest(token), this.now()) as { owner: string } | undefined;
-    requireThat(row, 'UNAUTHORISED', 'Sign in with an owner wallet.', 401);
-    return row.owner;
+    const wallet = await this.consume(id, signature, 'signin');
+    return this.store.transaction(() => {
+      let agent = this.store.agents().find(a => a.wallet === wallet);
+      if (!agent) {
+        agent = { id: randomUUID(), wallet, name: `Agent ${wallet.slice(-6)}`, createdAt: this.now() };
+        this.store.saveAgent(agent);
+      }
+      const token = newToken(), expiresAt = this.now() + 8 * 3600_000;
+      this.store.db.prepare('DELETE FROM sessions WHERE expires_at<=?').run(this.now());
+      this.store.db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(digest(token), agent.id, expiresAt);
+      return { token, expiresAt, agent: { id: agent.id, wallet: agent.wallet, name: agent.name, createdAt: agent.createdAt } };
+    });
   }
   agent(token: string) {
-    const hash = digest(token);
-    const agent = this.store.agents().find(a => a.tokenHash === hash);
-    requireThat(agent, 'UNAUTHORISED', 'Agent runtime token is invalid.', 401);
-    return agent;
+    const row = this.store.db.prepare('SELECT owner FROM sessions WHERE hash=? AND expires_at>?').get(digest(token), this.now());
+    requireThat(row, 'UNAUTHORISED', 'Sign an agent wallet challenge to obtain or renew your session.', 401);
+    return this.store.agent(String(row.owner));
   }
   logout(token: string) { this.store.db.prepare('DELETE FROM sessions WHERE hash=?').run(digest(token)); }
 }

@@ -8,7 +8,7 @@ import { SignerKeystore } from '../src/payments/keystore.js';
 import { ArcGateway, USDC } from '../src/chain.js';
 import { MIN_FEE, MAX_FEE } from '../src/payments/signer.js';
 const publicPath = '../docs/deployments/arc-testnet.json';
-const journalPath = './data/deployment-arc-testnet.json';
+const journalPath = './data/deployment-arc-testnet-v2.json';
 const tokenAbi = parseAbi(['function balanceOf(address) view returns (uint256)', 'function transfer(address,uint256) returns (bool)']);
 function updateEnv(path: string, values: Record<string,string>) {
   let source = existsSync(path) ? readFileSync(path,'utf8') : '';
@@ -38,7 +38,7 @@ async function run() {
     SIGNER_HOST:'127.0.0.1',SIGNER_PORT:'3012',SIGNER_DATABASE:'./data/signer/keys.sqlite',
     ARC_NETWORK:'testnet',ARC_RPC_URL:rpc,GAS_SPONSOR_ENABLED:'true',GAS_BUDGET_USDC:'3',GAS_TOPUP_USDC:'0.05',
     ...(signerUrl ? {SIGNER_DATABASE_URL:signerUrl} : {}) });
-  const keys = await SignerKeystore.open('./data/signer/keys.sqlite',Buffer.from(encryption,'base64'),signerUrl,'signer:testnet');
+  const keys = await SignerKeystore.open('./data/signer/keys.sqlite',Buffer.from(encryption,'base64'),signerUrl,signerEnv.SIGNER_STATE_NAMESPACE ?? 'signer:testnet');
   try {
     const resolver = keys.account('resolver').address, keeper = keys.account('keeper').address, sponsor = keys.account('gas').address;
     await keys.flush();
@@ -68,22 +68,21 @@ async function run() {
     const escrowArtifact=artifact('GameEscrow');
     const escrowReceipt=await send('escrow',undefined,encodeDeployData({...escrowArtifact,args:[USDC,resolver]}));
     const escrow=getAddress(escrowReceipt.contractAddress!);
-    const factoryReceipt=await send('factory',undefined,encodeDeployData({...artifact('AgentAccountFactory'),args:[escrow]}));
-    const factory=getAddress(factoryReceipt.contractAddress!);
-    const gateway=new ArcGateway(escrow,'testnet',rpc,factory);await gateway.initialise();
+    const gateway=new ArcGateway(escrow,'testnet',rpc);await gateway.initialise();
     if(gateway.resolver?.toLowerCase()!==resolver.toLowerCase())throw new Error('RESOLVER_MISMATCH');
     for(const [role,address] of [['resolver',resolver],['keeper',keeper],['gas',sponsor]] as const) {
       const current=await client.readContract({address:USDC,abi:tokenAbi,functionName:'balanceOf',args:[address]});
       if(current<50000n) await send(`fund-${role}`,USDC,encodeFunctionData({abi:tokenAbi,functionName:'transfer',args:[address,role==='gas'?1000000n:100000n]}));
     }
     const manifest={network:'Arc testnet',chainId:5042002,usdc:USDC,deployer:account.address,resolver,keeper,gasSponsor:sponsor,
-      escrow,factory,escrowDeploymentBlock:String(escrowReceipt.blockNumber),factoryDeploymentBlock:String(factoryReceipt.blockNumber),
-      escrowTransaction:escrowReceipt.transactionHash,factoryTransaction:factoryReceipt.transactionHash,solidity:'0.8.30',evmVersion:'cancun',optimizerRuns:200,viaIR:true,
+      version:2,escrow,escrowDeploymentBlock:String(escrowReceipt.blockNumber),
+      escrowTransaction:escrowReceipt.transactionHash,solidity:'0.8.30',evmVersion:'cancun',optimizerRuns:200,viaIR:true,
       audited:false,createdAt:new Date().toISOString()};
+    if (existsSync(publicPath)) { const previous=JSON.parse(readFileSync(publicPath,'utf8')); if(previous.escrow!==escrow) writeFileSync('../docs/deployments/arc-testnet-v1.json',JSON.stringify(previous,null,2)); }
     writeFileSync(publicPath,JSON.stringify(manifest,null,2));
-    updateEnv('.env.signer',{ESCROW_ADDRESS:escrow,AGENT_ACCOUNT_FACTORY:factory});
-    updateEnv('.env',{ARC_NETWORK:'testnet',ARC_RPC_URL:rpc,ESCROW_ADDRESS:escrow,AGENT_ACCOUNT_FACTORY:factory,ESCROW_DEPLOYMENT_BLOCK:String(escrowReceipt.blockNumber),
-      SIGNER_URL:'http://127.0.0.1:3012',SIGNER_TOKEN:credential,OPS_TOKEN:process.env.OPS_TOKEN??randomBytes(32).toString('hex'),GAMES_PER_DAY:'10',HOSTED_GAMES_PER_DAY:'10',HOSTED_REQUESTS_PER_DAY:'200'});
+    updateEnv('.env.signer',{ESCROW_ADDRESS:escrow,AGENT_ACCOUNT_FACTORY:''});
+    updateEnv('.env',{ARC_NETWORK:'testnet',ARC_RPC_URL:rpc,ESCROW_ADDRESS:escrow,AGENT_ACCOUNT_FACTORY:'',ESCROW_DEPLOYMENT_BLOCK:String(escrowReceipt.blockNumber),
+      SIGNER_URL:'http://127.0.0.1:3012',SIGNER_TOKEN:credential,OPS_TOKEN:process.env.OPS_TOKEN??randomBytes(32).toString('hex'),MATCH_MODE:'paid',STATE_NAMESPACE:'backend:testnet:external-v2',DATABASE_PATH:'./data/platform-v2.sqlite'});
     console.log(JSON.stringify({verified:true,...manifest}));
   } finally { await keys.shutdown(); }
 }

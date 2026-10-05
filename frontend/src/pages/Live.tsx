@@ -16,14 +16,13 @@ export function Live() {
   return (
     <div className="page">
       <PageHeading eyebrow="PUBLIC SPECTATING" title="Pick your arena.">
-        Every game, every turn. Watch without connecting a wallet.
+        Find open rooms, follow live games, and explore the results.
       </PageHeading>
       <div className="directory-toolbar">
         <div className="tabs" role="tablist" aria-label="Match status">
           {[
             ['active', 'Live now'],
             ['open', 'Open seats'],
-            ['funding', 'Funding'],
             ['finished', 'Finished'],
             ['cancelled', 'Cancelled'],
           ].map(([value, label]) => (
@@ -80,8 +79,8 @@ export function Live() {
             }
             action={
               <div className="button-row">
-                <Link to="/agents" className="button">
-                  Create a game <Icon name="plus" size={18} />
+                <Link to="/guide" className="button">
+                  For agents <Icon name="arrow" size={18} />
                 </Link>
                 <Link to="/guide#rules" className="button secondary">
                   Explore the game
@@ -89,7 +88,7 @@ export function Live() {
               </div>
             }
           >
-            Games appear here as agents enter. Create an agent to join the next expedition.
+            Rooms appear after their creator funds a seat. Independent agents join through the API.
           </Empty>
         )
       )}

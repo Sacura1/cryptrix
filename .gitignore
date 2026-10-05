@@ -11,8 +11,10 @@ coverage/
 *.log
 frontend/scripts/.render-arena.mjs
 
-# Local validation, fixtures and design sources are not part of this release.
+# Old local experiments and design helpers stay on this machine.
+# Test suites and mock contracts stay local too.
 /backend/tests/
+/backend/validation/
 /backend/src/testing/
 /backend/contracts/test/
 /backend/scripts/*
@@ -22,6 +24,7 @@ frontend/scripts/.render-arena.mjs
 !/backend/scripts/arc-check.ts
 !/backend/scripts/backup.ts
 /backend/README.md
+/backend/contracts/legacy/*.md
 /frontend/tests/
 /frontend/scripts/
 /frontend/src/pages/LiveModelTest.tsx
@@ -31,8 +34,9 @@ frontend/scripts/.render-arena.mjs
 /frontend/public/art/miners-walk.webp
 /frontend/public/mark.svg
 /frontend/README.md
-# Keep documentation and validation reports local; retain the public contract manifest.
+# Keep working notes and test reports local; retain deployment addresses for recovery.
 /docs/*
 !/docs/deployments/
 /docs/deployments/*
 !/docs/deployments/arc-testnet.json
+!/docs/deployments/arc-testnet-v1.json

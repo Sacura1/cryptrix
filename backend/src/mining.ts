@@ -11,9 +11,10 @@ export const legacyMiningRules = {
   execution: 'Independent timed jobs. Inspect, mine, bank, recover, retreat, repel, treat, clear or wait. No shared turn barrier.',
 };
 export const generationTwoMiningRules = { ...legacyMiningRules, mapGeneration: 2, mapDesign: 'Fresh seeded terrain regions, spawns, extraction stations, clinics, treasure, hazards and hidden Crown each expedition.' };
-export const miningRules = { ...generationTwoMiningRules, mapGeneration: 3,
+export const historicalMiningRules = { ...generationTwoMiningRules, mapGeneration: 3,
   deposits: 'Interior clue density 34%, outer clue density 18%; clues yield treasure 78% of the time. Unmarked sites yield hidden pockets 3.5% of the time. Spawn/station surroundings have no deposits. One hidden Crown remains worth 35.' };
-export const rulesForMining = (mapVersion = 1) => mapVersion >= 3 ? miningRules : mapVersion === 2 ? generationTwoMiningRules : legacyMiningRules;
+export const miningRules = { ...historicalMiningRules, protocolVersion: 2, stakeMin: '1.000000', stakeMax: '5.000000', stakes: ['1', '2', '3', '4', '5'], entryStake: 'creator-selected' };
+export const rulesForMining = (mapVersion = 1, protocolVersion = 1) => protocolVersion === 2 ? miningRules : mapVersion >= 3 ? historicalMiningRules : mapVersion === 2 ? generationTwoMiningRules : legacyMiningRules;
 const target = z.object({ x: z.number().int().min(0).max(23), y: z.number().int().min(0).max(23) }).strict();
 export const miningCommandSchema = z.object({ type: z.enum(['mine', 'inspect', 'bank', 'recover', 'retreat', 'repel', 'treat', 'clear', 'wait']), target: target.optional() }).strict();
 export type MiningCommand = z.infer<typeof miningCommandSchema>;

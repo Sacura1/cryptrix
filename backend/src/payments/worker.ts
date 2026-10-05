@@ -1,4 +1,3 @@
-import { readyAgents } from '../admission.js';
 import { randomUUID } from 'node:crypto';
 import { getAddress, parseAbi, type Address, type Hex } from 'viem';
 import { Fault, formatUsdc, readEquipmentIntent, requireThat, type Match } from '../domain.js';
@@ -23,15 +22,6 @@ export class PaymentWorker {
   }
   private async batch() {
     const { store, now } = this.platform;
-    // Recover entry intents committed before an enqueue crash.
-    for (const row of store.db.prepare('SELECT match_id,agent_id,equipment FROM intents').all()) {
-      const agent = store.agent(String(row.agent_id)); if (agent.kind !== 'hosted') continue;
-      const match = store.match(String(row.match_id));
-      if (match.entries.some(e => e.agentId === agent.id) || match.status === 'cancelled') continue;
-      const gear = readEquipmentIntent(String(row.equipment));
-      const intent = this.chain.prepare(match, agent, match.creatorId === agent.id, gear.equipment, gear.equipmentSalt)[0]!;
-      store.enqueue(`entry:${match.id}:${agent.id}`, 'entry', { matchId: match.id, agentId: agent.id, scope: `agent:${agent.id}`, context: { purpose: 'entry', matchId: match.id, agentId: agent.id }, intent, deadline: match.fillDeadline }, now());
-    }
     // Exhaustive pending query; never silently omit settlements after the first 100 results.
     const finished = store.db.prepare("SELECT doc FROM matches WHERE mode='paid' AND status='finished'").all().map(row => JSON.parse(String(row.doc)) as Match);
     for (const match of finished.filter(m => m.settlement === 'pending')) {
@@ -42,13 +32,14 @@ export class PaymentWorker {
     }
     // Claiming cannot withdraw to the platform: the immutable account receives all credits.
     const claimable = store.db.prepare("SELECT doc FROM matches WHERE mode='paid' AND (status='finished' OR status='cancelled')").all().map(row => JSON.parse(String(row.doc)) as Match);
-    for (const match of claimable.filter(m => m.settlement === 'settled' || m.settlement === 'refund-claimable')) for (const entry of match.entries) {
-      const agent = store.agent(entry.agentId);
-      if (agent.kind !== 'hosted' || (match.settlement === 'settled' && !match.payouts?.[match.entries.indexOf(entry)])) continue;
+    for (const match of claimable.filter(m => m.settlement === 'settled' || m.settlement === 'refund-claimable')) for (const wallet of match.chainParticipants ?? match.entries.map(e => e.wallet)) {
+      const agent = store.agents().find(a => a.wallet === wallet); if (!agent) continue;
+      const entry = match.entries.find(e => e.wallet === wallet);
+      if (match.settlement === 'settled' && !match.payouts?.[match.entries.findIndex(e => e.wallet === wallet)]) continue;
       store.enqueue(`claim:${match.id}:${agent.id}`, 'claim', { matchId: match.id, agentId: agent.id, scope: 'keeper', context: { purpose: 'claim', matchId: match.id, agentId: agent.id }, intent: this.chain.claimAccount(agent.wallet), deadline: 0 }, now());
     }
     // Deadline refunds are permissionless. Keeper pays fees from its own service wallet.
-    for (const match of store.outstanding().filter(m => m.mode === 'paid' && ((m.chainStatus === 1 && m.fillDeadline <= now()) || (m.chainStatus === 2 && !!m.chainResolveDeadline && m.chainResolveDeadline <= now())))) {
+    for (const match of store.db.prepare("SELECT doc FROM matches WHERE mode='paid'").all().map(row => JSON.parse(String(row.doc)) as Match).filter(m => (m.chainStatus === 1 && m.fillDeadline <= now()) || (m.chainStatus === 2 && !!m.chainResolveDeadline && m.chainResolveDeadline <= now()))) {
       store.enqueue(`refund:${match.id}`, 'refund', { matchId: match.id, scope: 'keeper', context: { purpose: 'refund', matchId: match.id }, intent: this.chain.refund(match.id), deadline: 0 }, now());
     }
     for (let i = 0; i < 8 && !this.closing; i++) {
@@ -87,32 +78,21 @@ export class PaymentWorker {
       try { receipt = await this.chain.client.getTransactionReceipt({ hash: job.hash }); } catch { /* Identical bytes can be retried; never make a second signature. */ }
       if (receipt) {
         if (receipt.status === 'reverted') { this.update(job, 'failed', 'TRANSACTION_REVERTED'); return; }
-        if (job.kind === 'entry') await this.platform.confirm(payload.agentId!, match.id, job.hash);
-        else await this.platform.sync(match.id);
+        await this.platform.sync(match.id);
         if (job.kind === 'refund') requireThat(store.match(match.id).chainStatus === 4, 'REFUND_UNCONFIRMED', 'Refund receipt did not produce cancellation.');
         if (job.kind === 'settlement') requireThat(store.match(match.id).settlement === 'settled', 'SETTLEMENT_UNCONFIRMED', 'Settlement is not confirmed.');
         this.update(job, 'confirmed'); return;
       }
     }
-    if ((job.kind === 'entry' && match.entries.some(e => e.agentId === payload.agentId)) || (job.kind === 'settlement' && match.settlement === 'settled') || (job.kind === 'refund' && match.chainStatus === 4)) { this.update(job, 'confirmed'); return; }
+    if ((job.kind === 'settlement' && match.settlement === 'settled') || (job.kind === 'refund' && match.chainStatus === 4)) { this.update(job, 'confirmed'); return; }
     if (payload.deadline > 0 && payload.deadline <= now()) { this.update(job, job.raw_tx || job.unsigned_tx ? 'needs-review' : 'expired', 'OPERATION_EXPIRED'); return; }
     if (match.status === 'cancelled' && job.kind !== 'refund' && job.kind !== 'claim') { this.update(job, job.unsigned_tx ? 'needs-review' : 'cancelled', 'MATCH_CANCELLED'); return; }
     if (job.kind === 'claim') {
-      const credit = await this.chain.client.readContract({ address: this.chain.escrow, abi: parseAbi(['function credits(address) view returns (uint256)']), functionName: 'credits', args: [getAddress(payload.intent.to)] });
+      const credit = await this.chain.client.readContract({ address: this.chain.escrow, abi: parseAbi(['function credits(address) view returns (uint256)']), functionName: 'credits', args: [getAddress(store.agent(payload.agentId!).wallet)] });
       if (credit === 0n) { this.update(job, 'done'); return; }
     }
-    let sender: Address;
-    if (job.kind === 'entry') {
-      const agent = store.agent(payload.agentId!);
-      if (this.platform.hostedMode !== 'model') { this.update(job, 'paused', 'MODEL_WORKER_DISABLED', 5000); return; }
-      if (!agent.automatic) { this.update(job, 'paused', 'AUTOMATIC_ENTRIES_STOPPED', 5000); return; }
-      const used = store.usage(agent.id, 'paid', now());
-      requireThat(used.games < agent.limits.gamesPerDay && used.stake + match.stake <= agent.limits.dailyStake, 'DAILY_LIMIT', 'Owner platform daily limit was lowered.');
-      sender = await this.signer.authorize(agent, match);
-    } else {
-      sender = await this.signer.provider.address(payload.scope);
-      if (job.kind === 'settlement') { verifyResult(match); requireThat(sender.toLowerCase() === this.chain.resolver?.toLowerCase(), 'WRONG_SIGNER', 'Only the configured escrow resolver can settle.', 503); }
-    }
+    const sender = await this.signer.provider.address(payload.scope);
+    if (job.kind === 'settlement') { verifyResult(match); requireThat(sender.toLowerCase() === this.chain.resolver?.toLowerCase(), 'WRONG_SIGNER', 'Only the configured escrow resolver can settle.', 503); }
     if (this.closing) { this.update(job, 'retry', 'SHUTDOWN', 1000); return; }
     let unsigned: UnsignedTransaction;
     if (job.unsigned_tx) {
@@ -148,38 +128,12 @@ export class PaymentWorker {
       job.hash = checked.hash;
     } else await validateSigned(raw, unsigned, sender);
     if (this.closing) { this.update(job, 'retry', 'SHUTDOWN', 1000); return; }
-    // Revocation and stopping future entries are rechecked after signing, before broadcast.
-    if (job.kind === 'entry') {
-      const agent = store.agent(payload.agentId!);
-      if (!agent.automatic) { this.update(job, 'paused', 'AUTOMATIC_ENTRIES_STOPPED', 5000); return; }
-      await this.signer.authorize(agent, store.match(match.id));
-    }
     this.live(job);
     requireThat(!payload.deadline || payload.deadline > now(), 'OPERATION_EXPIRED', 'Signing finished after the operation deadline.', 409);
     await store.flush();
     const hash = await this.chain.client.sendRawTransaction({ serializedTransaction: raw });
     requireThat(hash.toLowerCase() === job.hash!.toLowerCase(), 'SIGNED_TRANSACTION_CHANGED', 'RPC returned a different transaction hash.', 503);
     this.update(job, 'broadcast', undefined, 1000);
-  }
-  async automaticEntries() {
-    if (this.closing || this.platform.hostedMode !== 'model') return;
-    for (const agent of readyAgents(this.platform.store.agents().filter(a => a.kind === 'hosted' && a.automatic), id => this.platform.store.usage(id, this.platform.mode, this.platform.now()))) {
-      try {
-        await this.signer.authorize(agent);
-        const balance = await this.chain.client.readContract({ address: USDC, abi: parseAbi(['function balanceOf(address) view returns (uint256)']), functionName: 'balanceOf', args: [getAddress(agent.wallet)] });
-        if (balance < 1_000_000n) continue;
-        const games = agent.limits.allowedGames.filter(game => !this.platform.miningEnabled || game === 'cache-rush');
-        if (!games.length) continue;
-        const offer = this.platform.store.outstanding().filter(m => m.status === 'open').sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id)).find(m => games.includes(m.game) && m.fillDeadline > this.platform.now() && m.stake <= agent.limits.maxStake && m.entries.every(e => this.platform.store.agent(e.agentId).owner !== agent.owner) && m.entries.length + Number(this.platform.store.db.prepare('SELECT count(*) AS count FROM intents WHERE match_id=? AND expires_at>?').get(m.id, this.platform.now())?.count) < (m.game === 'flux-duel' ? 2 : 8));
-        const key = `automatic:${randomUUID()}`;
-        if (offer) this.platform.join(agent.id, offer.id, key, { expectedStake: formatUsdc(offer.stake) });
-        else {
-          // Let one creator confirm funding before idle agents create competing empty offers.
-          if (this.platform.store.outstanding().some(m => m.status === 'funding' && games.includes(m.game) && m.fillDeadline > this.platform.now())) continue;
-          this.platform.create(agent.id, key, { game: games[0], stake: games[0] === 'cache-rush' ? '1' : formatUsdc(Math.min(1_000_000, agent.limits.maxStake)) });
-        }
-      } catch { /* Busy accounts, expiry and both layers of owner policy block new entries only. */ }
-    }
   }
   async stop() { this.closing = true; await this.task; }
 }

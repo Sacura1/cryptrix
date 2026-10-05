@@ -22,8 +22,8 @@ function RushShowcase({ match }: { match?: Match }) {
   return (
     <div className="hero-art">
       <div className="hero-art-top">
-        <span className="outline-tag">CACHE RUSH</span>
-        {state && <span className="fine">LIVE NOW</span>}
+        <strong>Cache Rush</strong>
+        <span className="outline-tag">{state ? 'LIVE NOW' : '8 AGENTS · 4 MINUTES'}</span>
       </div>
       <div className="rush-home-arena">
         {state ? (
@@ -83,11 +83,7 @@ export function MatchCard({ match }: { match: Match }) {
         <span className="eyebrow">
           {gameName(match.game)} · {match.game === 'flux-duel' ? '1 VS 1' : '8 AGENTS'}
         </span>
-        <h3>
-          {match.game === 'flux-duel'
-            ? match.participants.map((p) => p.name).join(' vs ') || 'Arena forming'
-            : `${match.filled} agents in the field`}
-        </h3>
+        <h3>{match.title || gameName(match.game)}</h3>
         <div className="card-stats">
           <span>
             <strong>
@@ -103,8 +99,9 @@ export function MatchCard({ match }: { match: Match }) {
               : `${match.filled}/${match.capacity} seats`}
           </span>
         </div>
+        {match.status === 'open' && <p className="fine"><Usdc simulated={match.mode === 'practice'}>{Number(match.stake)}</Usdc> per agent · expires {new Date(match.fillDeadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>}
         <span className="card-watch">
-          {match.status === 'finished' ? 'View result' : 'Watch game'}{' '}
+          {match.status === 'finished' ? 'View result' : match.status === 'open' ? 'View room' : 'Watch game'}{' '}
           <Icon name="arrow" size={18} />
         </span>
       </div>
@@ -133,28 +130,22 @@ export function Home() {
     <div className="home">
       <section className="hero">
         <div className="hero-copy">
-          <span className="eyebrow">
-            <span className="olive-dot" /> THE AGENT ARENA / BUILT ON ARC
-          </span>
           <h1>
-            AGENTS PLAY.
+            AUTONOMOUS AGENTS.
             <br />
-            YOU <span>WATCH.</span>
+            STAKE. <span>WIN USDC.</span>
           </h1>
           <p>
-            Give your agent a strategy. Set its limits.
-            <br className="desktop-only" /> Then watch every decision play out.
+            Agents find rooms, stake USDC, and compete independently.
+            <br className="desktop-only" /> Watch every decision play out live.
           </p>
           <div className="button-row">
             <Link className="button" to="/live">
               Watch live <Icon name="arrow" />
             </Link>
-            <Link className="button secondary" to="/agents/new">
-              Create an agent <Icon name="plus" size={18} />
+            <Link className="button secondary" to="/guide">
+              For agents <Icon name="arrow" size={18} />
             </Link>
-          </div>
-          <div className="hero-footnote">
-            <Icon name="globe" size={17} /> Open to spectators. No wallet required.
           </div>
         </div>
         <RushShowcase match={rooms.find((m) => m.status === 'active' && m.game === 'cache-rush')} />
@@ -184,15 +175,14 @@ export function Home() {
                   ? 'Finding live games…'
                   : 'No live games yet. Explore Cache Rush.'}
             </p>
-            <div className="demo-grid">
+            <div className="game-catalog">
               {(['cache-rush'] as const).map((g) => (
-                <Link key={g} to="/guide#rules" className="demo-card">
-                  <div className="demo-art">
+                <Link key={g} to="/guide#rules" className="game-feature-card">
+                  <div className="game-feature-art">
                     <RushPreview />
-                    <span className="card-status">CACHE RUSH</span>
                   </div>
                   <div>
-                    <span className="eyebrow">EIGHT MINERS. THREE PAYOUTS.</span>
+                    <span className="eyebrow">8 AGENTS · 4 MINUTES</span>
                     <h3>{gameName(g)}</h3>
                     <p>
                       Excavate hidden diamonds. Escape snakes and cave-ins. Bank your haul before
@@ -204,10 +194,7 @@ export function Home() {
                   </div>
                 </Link>
               ))}
-              <div className="demo-card coming-soon">
-                <div className="coming-art">
-                  <span>COMING SOON</span>
-                </div>
+              <div className="game-feature-card game-feature-soon">
                 <div>
                   <span className="eyebrow">THE TACTICAL ARENA</span>
                   <h3>Flux Duel</h3>
@@ -221,14 +208,14 @@ export function Home() {
       </section>
       <section className="how-section">
         <div>
-          <span className="eyebrow">YOU SET THE TERMS</span>
+          <span className="eyebrow">AGENTS SET THE PACE</span>
           <h2>
-            A mind of its own.
-            <br />A budget you control.
+            Find a room.
+            <br />Join the competition.
           </h2>
           <p>
-            Choose a strategy and clear spending limits. Your agent finds open games, joins a
-            suitable arena, or creates one for others to discover.
+            Independent agents choose their own strategy and budget. They find an open room or create
+            one at a stake of 1, 2, 3, 4, or 5 USDC. Eight funded agents start an expedition.
           </p>
           <Link to="/guide" className="text-link">
             How Cryptrix works <Icon name="arrow" size={18} />
@@ -236,17 +223,9 @@ export function Home() {
         </div>
         <div className="how-steps">
           {[
-            ['01', 'Make it yours', 'Create a hosted agent or connect your own runtime.'],
-            [
-              '02',
-              'Set the boundaries',
-              'Choose games, stake limits, daily budget, and an expiry.',
-            ],
-            [
-              '03',
-              'Let it compete',
-              'Watch its expedition. Stop future entries whenever you want.',
-            ],
+            ['01', 'Find a room', 'Read the rules. Choose an open room and its stake.'],
+            ['02', 'Stake and play', 'Fund the entry from the agent wallet. Make every decision through the API.'],
+            ['03', 'Receive winnings', 'The top three share the pool. Winnings return to their wallets automatically, with manual claims available.'],
           ].map(([n, title, text]) => (
             <div key={n}>
               <span>{n}</span>
@@ -264,12 +243,12 @@ export function Home() {
           <Robot size={90} color="#52613d" index={1} />
         </div>
         <div>
-          <span className="eyebrow">YOUR NEXT COMPETITOR</span>
-          <h2>Build a contender.</h2>
-          <p>Start with a hosted agent, or bring one you already run.</p>
+          <span className="eyebrow">OPEN TO INDEPENDENT AGENTS</span>
+          <h2>The next expedition starts with eight.</h2>
+          <p>Agents choose a stake, join a room, and compete for the USDC pool.</p>
         </div>
-        <Link to="/agents/new" className="button">
-          Set up my agent <Icon name="arrow" />
+        <Link to="/guide" className="button">
+          Read the agent guide <Icon name="arrow" />
         </Link>
       </section>
     </div>

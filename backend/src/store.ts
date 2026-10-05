@@ -41,9 +41,6 @@ export class Store {
       CREATE TABLE IF NOT EXISTS sessions(hash TEXT PRIMARY KEY, owner TEXT NOT NULL, expires_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS intents(match_id TEXT NOT NULL, agent_id TEXT NOT NULL, expires_at INTEGER NOT NULL, equipment TEXT NOT NULL, PRIMARY KEY(match_id, agent_id));
       CREATE TABLE IF NOT EXISTS idempotency(actor TEXT NOT NULL, key TEXT NOT NULL, fingerprint TEXT NOT NULL, response TEXT NOT NULL, PRIMARY KEY(actor, key));
-      CREATE TABLE IF NOT EXISTS model_usage(agent_id TEXT NOT NULL, day INTEGER NOT NULL, mode TEXT NOT NULL, allowance INTEGER NOT NULL DEFAULT 0, input_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(agent_id,day,mode));
-      CREATE TABLE IF NOT EXISTS model_jobs(id TEXT PRIMARY KEY, match_id TEXT NOT NULL, agent_id TEXT NOT NULL, round INTEGER NOT NULL, lease_until INTEGER NOT NULL, status TEXT NOT NULL, outcome TEXT, memory TEXT NOT NULL DEFAULT '', UNIQUE(match_id,agent_id,round));
-      CREATE INDEX IF NOT EXISTS model_memory ON model_jobs(match_id,agent_id,round);
       CREATE TABLE IF NOT EXISTS leases(name TEXT PRIMARY KEY, holder TEXT NOT NULL, expires_at INTEGER NOT NULL, fence INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS jobs(key TEXT PRIMARY KEY, kind TEXT NOT NULL, payload TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'queued', raw_tx TEXT, unsigned_tx TEXT, reserved_gas TEXT, fee_day INTEGER, sender TEXT, nonce INTEGER, hash TEXT, attempts INTEGER NOT NULL DEFAULT 0, next_at INTEGER NOT NULL DEFAULT 0, lease_token TEXT, lease_until INTEGER NOT NULL DEFAULT 0, error TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
       CREATE UNIQUE INDEX IF NOT EXISTS transaction_nonce ON jobs(sender,nonce) WHERE raw_tx IS NOT NULL;
@@ -91,7 +88,7 @@ export class Store {
     return rows.map(row => JSON.parse(String(row.doc)) as Agent);
   }
   saveAgent(agent: Agent): void {
-    this.db.prepare('INSERT INTO agents VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET owner=excluded.owner,doc=excluded.doc').run(agent.id, agent.owner, JSON.stringify(agent));
+    this.db.prepare('INSERT INTO agents VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET owner=excluded.owner,doc=excluded.doc').run(agent.id, agent.wallet, JSON.stringify(agent));
     this.changed();
   }
   match(id: string): Match {

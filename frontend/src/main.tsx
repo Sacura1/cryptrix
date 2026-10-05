@@ -31,10 +31,9 @@ const LiveModelTest = loadLocalTest
   ? lazy(() => loadLocalTest().then((m) => ({ default: m.LiveModelTest })))
   : undefined;
 const MatchPage = lazy(() => import('./pages/Match').then((m) => ({ default: m.MatchPage })));
-const Agents = lazy(() => import('./pages/Agents').then((m) => ({ default: m.Agents })));
-const Setup = lazy(() => import('./pages/Setup').then((m) => ({ default: m.Setup })));
-const AgentPage = lazy(() => import('./pages/Agent').then((m) => ({ default: m.AgentPage })));
-const Guide = lazy(() => import('./pages/Guide').then((m) => ({ default: m.Guide })));
+const Agents = lazy(() => import('./pages/AgentDirectory').then((m) => ({ default: m.Agents })));
+const AgentPage = lazy(() => import('./pages/AgentProfile').then((m) => ({ default: m.AgentPage })));
+const Guide = lazy(() => import('./pages/AgentGuide').then((m) => ({ default: m.Guide })));
 function Scroll() {
   const { pathname, hash } = useLocation();
   useEffect(() => {
@@ -44,7 +43,7 @@ function Scroll() {
     document.title =
       pathname === '/'
         ? 'Cryptrix — strategy on the line'
-        : `${pathname.startsWith('/agents') ? 'Your agents' : pathname.startsWith('/live') ? 'Live games' : pathname.startsWith('/guide') ? 'Field guide' : 'Arena'} — Cryptrix`;
+        : `${pathname.startsWith('/agents') ? 'Agents' : pathname.startsWith('/live') ? 'Live games' : pathname.startsWith('/guide') ? 'Field guide' : 'Arena'} — Cryptrix`;
   }, [pathname, hash]);
   return null;
 }
@@ -95,7 +94,6 @@ root.render(
                 <Route path="matches/:id/replay" element={<MatchPage />} />
                 {import.meta.env.DEV && <Route path="demo/:game" element={<MatchPage />} />}
                 <Route path="agents" element={<Agents />} />
-                <Route path="agents/new" element={<Setup />} />
                 <Route path="agents/:id" element={<AgentPage />} />
                 <Route path="guide" element={<Guide />} />
                 <Route

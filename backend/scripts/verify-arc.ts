@@ -3,19 +3,19 @@ import { resolve } from 'node:path';
 import solc from 'solc';
 import { encodeAbiParameters, parseAbiParameters } from 'viem';
 const manifest=JSON.parse(readFileSync('../docs/deployments/arc-testnet.json','utf8'));
-const sources:Record<string,{content:string}>=Object.fromEntries(['GameEscrow.sol','AgentAccount.sol','AgentAccountFactory.sol','test/MockUSDC.sol'].filter(name => existsSync(`contracts/${name}`)).map(name=>[`contracts/${name}`,{content:readFileSync(`contracts/${name}`,'utf8').replace(/\r\n/g, '\n')} ]));
+const sources:Record<string,{content:string}>=Object.fromEntries(['GameEscrow.sol','test/MockUSDC.sol'].filter(name => existsSync(`contracts/${name}`)).map(name=>[`contracts/${name}`,{content:readFileSync(`contracts/${name}`,'utf8').replace(/\r\n/g, '\n')} ]));
 const settings={evmVersion:'cancun',optimizer:{enabled:true,runs:200},viaIR:true,outputSelection:{'*':{'*':['abi','evm.bytecode.object']}}};
 const result=JSON.parse(solc.compile(JSON.stringify({language:'Solidity',sources,settings}),{import:(path:string)=>{
   const content=readFileSync(resolve('node_modules',path),'utf8').replace(/\r\n/g, '\n');sources[path]={content};return {contents:content};
 }}));
-for(const name of ['GameEscrow','AgentAccountFactory']) {
+for(const name of ['GameEscrow']) {
   const artifact=JSON.parse(readFileSync(`artifacts/${name}.json`,'utf8'));
   if('0x'+result.contracts[`contracts/${name}.sol`][name].evm.bytecode.object!==artifact.bytecode)throw new Error('Verification build differs from deployed artifact');
 }
 const input={language:'Solidity',sources,settings};
 writeFileSync('../docs/deployments/arc-standard-input.json',JSON.stringify(input));
 const report:Record<string,unknown>={compiler:solc.version(),contracts:[]};
-for(const [name,address,args] of [['GameEscrow',manifest.escrow,[manifest.usdc,manifest.resolver]],['AgentAccountFactory',manifest.factory,[manifest.escrow]]] as const) {
+for(const [name,address,args] of [['GameEscrow',manifest.escrow,[manifest.usdc,manifest.resolver]]] as const) {
   const constructorArguments=encodeAbiParameters(parseAbiParameters(name==='GameEscrow'?'address,address':'address'),args as any).slice(2);
   const form=new URLSearchParams({module:'contract',action:'verifysourcecode',codeformat:'solidity-standard-json-input',contractaddress:address,
     contractname:`contracts/${name}.sol:${name}`,compilerversion:'v0.8.30+commit.73712a01',sourceCode:JSON.stringify(input),constructorArguments});

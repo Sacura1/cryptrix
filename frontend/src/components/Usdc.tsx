@@ -9,7 +9,7 @@ export function Usdc({
   return (
     <span className="usdc-amount">
       {children}
-      <img src="/brand/usdc.svg" alt="" width="32" height="32" />
+      <img src="/brand/usdc.svg" alt="" width="14" height="14" />
       {simulated ? 'simulated USDC' : 'USDC'}
     </span>
   );

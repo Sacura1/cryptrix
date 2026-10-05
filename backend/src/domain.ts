@@ -3,8 +3,10 @@ import type { MiningRecording } from './mining.js';
 
 export const GAME_IDS = ['flux-duel', 'cache-rush'] as const;
 export type GameId = typeof GAME_IDS[number];
-export const MIN_STAKE = 100_000;
-export const MAX_STAKE = 10_000_000;
+export const MIN_STAKE = 1_000_000;
+export const MAX_STAKE = 5_000_000;
+export const STAKES = ['1', '2', '3', '4', '5'] as const;
+export const MAX_OPEN_ROOMS = 5;
 export const RUSH_STAKE = 1_000_000;
 export const MAX_ROUNDS = 20;
 export const ROUND_MS = 30_000;
@@ -12,7 +14,7 @@ export const FILL_MS = 15 * 60_000;
 export const PLAY_SECONDS = 3600;
 
 export class Fault extends Error {
-  constructor(public status: number, public code: string, message: string) { super(message); }
+  constructor(public status: number, public code: string, message: string, public details?: unknown) { super(message); }
 }
 export function requireThat(value: unknown, code: string, message: string, status = 409): asserts value {
   if (!value) throw new Fault(status, code, message);
@@ -32,8 +34,7 @@ export function formatUsdc(units: number): string {
 }
 export function stakeFor(game: GameId, value?: string): number {
   const stake = value === undefined ? (game === 'cache-rush' ? RUSH_STAKE : MIN_STAKE) : parseUsdc(value);
-  requireThat(stake >= MIN_STAKE && stake <= MAX_STAKE, 'STAKE_RANGE', 'Stake must be between 0.1 and 10 USDC.', 400);
-  requireThat(game !== 'cache-rush' || stake === RUSH_STAKE, 'RUSH_STAKE', 'Cache Rush costs 1 USDC per agent.', 400);
+  requireThat(stake >= MIN_STAKE && stake <= MAX_STAKE && stake % MIN_STAKE === 0, 'STAKE_RANGE', 'Choose a stake of 1, 2, 3, 4, or 5 USDC.', 400);
   return stake;
 }
 export function capacity(game: GameId): number { return game === 'flux-duel' ? 2 : 8; }
@@ -43,7 +44,7 @@ export function canonical(value: unknown): string {
   return JSON.stringify(value) ?? 'null';
 }
 export function digest(value: unknown): `0x${string}` { return `0x${createHash('sha256').update(canonical(value)).digest('hex')}`; }
-export const rules = (game: GameId) => ({
+export const legacyRules = (game: GameId) => ({
   version: 1, game, capacity: capacity(game), maxRounds: MAX_ROUNDS, roundMs: ROUND_MS,
   stakeMin: '0.100000', stakeMax: '10.000000',
   entryStake: game === 'cache-rush' ? '1.000000' : 'creator-selected',
@@ -52,6 +53,8 @@ export const rules = (game: GameId) => ({
   duel: game === 'flux-duel' ? { board: 7, health: 12, energy: 6, equipmentBudget: 6, objective: [3, 3], timeoutAction: 'wait' } : undefined,
   rush: game === 'cache-rush' ? { board: 11, relics: 24, cargoCapacity: 5, heavyCargo: 3, vision: 2, scanVision: 4, timeoutAction: 'wait' } : undefined,
 });
+
+export const rules = (game: GameId, protocolVersion = 2) => protocolVersion === 1 ? legacyRules(game) : ({ ...legacyRules(game), protocolVersion: 2, stakeMin: '1.000000', stakeMax: '5.000000', stakes: STAKES, entryStake: 'creator-selected' });
 
 // rankGroups are dense group IDs in original participant order, not ordinal positions.
 export function payoutUnits(game: GameId, stake: number, rankGroups: number[]): number[] {
@@ -71,13 +74,8 @@ export function payoutUnits(game: GameId, stake: number, rankGroups: number[]): 
   return payouts;
 }
 
-export interface Limits { maxStake: number; dailyStake: number; gamesPerDay: number; allowedGames: GameId[]; expiresAt: number }
 export interface Agent {
-  id: string; owner: string; wallet: string; name: string; kind: 'hosted' | 'external';
-  strategy: 'aggressive' | 'defensive' | 'explorer'; limits: Limits;
-  instructions?: string;
-  chainOnly?: boolean;
-  automatic: boolean; tokenHash: string; createdAt: number;
+  id: string; wallet: string; name: string; createdAt: number;
 }
 export type MatchStatus = 'funding' | 'open' | 'active' | 'finished' | 'cancelled';
 export interface Entry { agentId: string; wallet: string; equipment: Equipment; equipmentSalt?: string }
@@ -100,9 +98,10 @@ export type GameState = DuelState | RushState;
 export type Action = { type: 'move'; direction: 'north' | 'south' | 'east' | 'west' } | { type: 'attack' | 'shield' | 'scan' | 'recharge' | 'wait' | 'collect' | 'deposit' };
 export interface RoundRecord { round: number; actions: Record<string, Action>; events: string[]; state: GameState }
 export interface Match {
-  engineVersion?: 2; miningMapVersion?: 2 | 3; mining?: MiningRecording;
+  title?: string;
+  protocolVersion?: 2; engineVersion?: 2; miningMapVersion?: 2 | 3; mining?: MiningRecording;
   id: `0x${string}`; game: GameId; mode: 'practice' | 'paid'; status: MatchStatus;
-  creatorId: string; stake: number; fillDeadline: number; createdAt: number;
+  creatorId: string; stake: number; fundingDeadline?: number; fillDeadline: number; createdAt: number;
   seed: string; commitment: `0x${string}`; rulesHash: `0x${string}`; entries: Entry[];
   pending: Record<string, Action>; state?: GameState; roundDeadline?: number;
   history: RoundRecord[]; ranks?: number[]; payouts?: number[]; resultHash?: `0x${string}`;

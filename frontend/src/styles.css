@@ -3581,5 +3581,5 @@ footer > small {
   margin: 7px 0;
 }
 
-.usdc-amount {display:inline-flex;align-items:center;gap:.4em;vertical-align:middle;white-space:nowrap;}
-.usdc-amount img {width:32px;height:32px;flex:none;object-fit:contain;}
+.usdc-amount {display:inline-flex;align-items:center;gap:.3em;vertical-align:baseline;white-space:nowrap;}
+.usdc-amount img {width:.9em;height:.9em;max-width:16px;max-height:16px;flex:none;object-fit:contain;}

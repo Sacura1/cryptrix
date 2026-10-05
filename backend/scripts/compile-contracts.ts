@@ -6,7 +6,7 @@ import type { Abi, Hex } from 'viem';
 
 export interface Artifact { abi: Abi; bytecode: Hex }
 export function compileContracts(): Record<string, Artifact> {
-  const sources = Object.fromEntries(['GameEscrow.sol', 'AgentAccount.sol', 'AgentAccountFactory.sol', 'test/MockUSDC.sol'].filter(name => existsSync(`contracts/${name}`)).map(name => [`contracts/${name}`, { content: readFileSync(`contracts/${name}`, 'utf8').replace(/\r\n/g, '\n') }]));
+  const sources = Object.fromEntries(['GameEscrow.sol', 'test/MockUSDC.sol'].filter(name => existsSync(`contracts/${name}`)).map(name => [`contracts/${name}`, { content: readFileSync(`contracts/${name}`, 'utf8').replace(/\r\n/g, '\n') }]));
   const result = JSON.parse(solc.compile(JSON.stringify({ language: 'Solidity', sources, settings: {
     // OpenZeppelin's current libraries use MCOPY. Arc's Osaka baseline supports Cancun.
     evmVersion: 'cancun', optimizer: { enabled: true, runs: 200 }, viaIR: true,

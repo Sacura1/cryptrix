@@ -13,6 +13,7 @@
 docs
 
 **/tests
+backend/validation
 backend/src/testing
 backend/contracts/test
 frontend/scripts

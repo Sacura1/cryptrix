@@ -19,6 +19,8 @@ export class NeonPersistence {
   private session?: Session;
   private db?: DatabaseSync;
   private queue: Promise<void> = Promise.resolve();
+  private flushing = false;
+  private nextFlush?: Promise<void>;
   private heartbeat?: ReturnType<typeof setInterval>;
   private fault?: Error;
   private checkpointAt = Date.now();
@@ -26,10 +28,13 @@ export class NeonPersistence {
   private constructor(url: string, readonly namespace: string) {
     if (!/^(postgres|postgresql):/.test(url) || !/^[a-zA-Z0-9:_-]{1,100}$/.test(namespace)) throw new Error('Invalid persistent storage configuration');
     this.pool = new pg.Pool({ connectionString: url, max: 2, connectionTimeoutMillis: 15000, idleTimeoutMillis: 20000, statement_timeout: 15000 });
+    // Checked-out clients emit errors themselves; the pool listener only covers idle clients.
+    this.pool.on('connect', client => client.on('error', () => { this.fault = new Error('NEON_CONNECTION_LOST'); }));
     this.pool.on('error', () => { this.fault = new Error('NEON_CONNECTION_LOST'); });
   }
   static async open(url: string, namespace: string): Promise<NeonPersistence> {
     const p = new NeonPersistence(url, namespace);
+    let phase: 'database' | 'snapshot' = 'database';
     try {
       await p.pool.query(`CREATE TABLE IF NOT EXISTS cryptrix_state (
         namespace TEXT PRIMARY KEY, owner TEXT, lease_until TIMESTAMPTZ,
@@ -43,11 +48,18 @@ export class NeonPersistence {
       const result = await p.pool.query(`UPDATE cryptrix_state SET owner=$2,lease_until=NOW()+INTERVAL '120 seconds'
         WHERE namespace=$1 AND (owner IS NULL OR lease_until<NOW()) RETURNING snapshot`, [namespace, p.owner]);
       if (!result.rowCount) throw new Error('NEON_WRITER_ALREADY_RUNNING');
+      phase = 'snapshot';
       if (result.rows[0].snapshot) writeFileSync(p.path, inflateSync(result.rows[0].snapshot));
       return p;
-    } catch {
+    } catch (error) {
       await p.pool.end(); rmSync(p.directory, { recursive: true, force: true });
-      throw new Error('NEON_STARTUP_FAILED: database unavailable or another writer owns this namespace');
+      if (error instanceof Error && error.message === 'NEON_WRITER_ALREADY_RUNNING') {
+        throw new Error('NEON_STARTUP_FAILED: NEON_WRITER_ALREADY_RUNNING. Stop the other instance using this namespace and allow its lease to expire.');
+      }
+      // Driver messages can contain connection details; expose only a bounded error code.
+      const code = error && typeof error === 'object' && 'code' in error && typeof error.code === 'string' && /^[A-Z0-9_]{2,48}$/.test(error.code) ? error.code : 'UNKNOWN';
+      const cause = phase === 'snapshot' ? 'NEON_SNAPSHOT_RESTORE_FAILED' : 'NEON_DATABASE_STARTUP_FAILED';
+      throw new Error(`NEON_STARTUP_FAILED: ${cause} (${code}). ${phase === 'snapshot' ? 'Check the existing database snapshot; preserve the deployed state.' : 'Check DATABASE_URL, database access and network connectivity.'}`);
     }
   }
   async attach(db: DatabaseSync): Promise<void> {
@@ -58,6 +70,7 @@ export class NeonPersistence {
       for (const row of result.rows) if (!db.applyChangeset(inflateSync(row.payload))) throw new Error('NEON_RESTORE_CONFLICT');
       this.session = db.createSession();
       this.heartbeat = setInterval(() => {
+        if (this.fault || this.closing) return;
         void this.pool.query(`UPDATE cryptrix_state SET lease_until=NOW()+INTERVAL '120 seconds'
           WHERE namespace=$1 AND owner=$2 AND lease_until>NOW()`, [this.namespace, this.owner])
           .then(r => { if (!r.rowCount) this.fault = new Error('NEON_WRITER_LEASE_LOST'); })
@@ -71,6 +84,15 @@ export class NeonPersistence {
     if (this.fault) throw this.fault;
     if (!this.db || !this.session || this.closing) throw new Error('NEON_STORAGE_CLOSED');
     if (this.db.isTransaction) throw new Error('Flush must follow the local transaction commit');
+    // Coalesce callers arriving during a write into one following durability barrier.
+    // Each caller still waits for a commit containing all changes made before its call.
+    if (this.flushing) {
+      if (!this.nextFlush) this.nextFlush = this.queue.then(() => {
+        this.nextFlush = undefined;
+        return this.flush();
+      });
+      return this.nextFlush;
+    }
     const changes = this.session.changeset();
     this.session.close(); this.session = this.db.createSession();
     if (!changes.length) return this.queue;
@@ -83,6 +105,7 @@ export class NeonPersistence {
       snapshot = deflateSync(readFileSync(file), { level: 3 });
       rmSync(file); this.checkpointAt = Date.now();
     }
+    this.flushing = true;
     this.queue = this.queue.then(async () => {
       const client = await this.pool.connect();
       try {
@@ -100,7 +123,7 @@ export class NeonPersistence {
         await client.query('ROLLBACK').catch(() => {});
         this.fault = new Error('NEON_DURABILITY_FAILED'); throw this.fault;
       } finally { client.release(); }
-    }).catch(() => { this.fault = new Error('NEON_DURABILITY_FAILED'); throw this.fault; });
+    }).catch(() => { this.fault = new Error('NEON_DURABILITY_FAILED'); throw this.fault; }).finally(() => { this.flushing = false; });
     return this.queue;
   }
   async close(): Promise<void> {

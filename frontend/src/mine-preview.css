@@ -95,3 +95,43 @@
   right: 18%;
   bottom: 15%;
 }
+
+/* Keep the game artwork separate from its name and entry details. */
+.rush-preview:after { content: none; }
+.hero .hero-art { border-radius: 14px; box-shadow: none; overflow: hidden; }
+.hero-art .hero-art-top { padding: 18px 22px; background: #f4eddc; }
+.hero-art-top strong { font-family: 'Barlow Condensed', sans-serif; font-size: 27px; }
+.hero-art .hero-caption { padding: 16px 22px; background: #f4eddc; }
+.hero-art .hero-caption > span { font-size: 11px; }
+.hero-art .rush-home-arena { border: 0; }
+.game-catalog { display: grid; grid-template-columns: 1.45fr 1fr; gap: 24px; }
+.game-feature-card { display: grid; grid-template-columns: 42% 1fr; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: #f5eedd; color: inherit; text-decoration: none; }
+.game-feature-art { position: relative; min-height: 240px; overflow: hidden; }
+.game-feature-art .rush-preview { position: absolute; inset: 0; min-height: 0; }
+.game-feature-art .rush-preview-miner { width: 155px; height: 155px; left: 8%; bottom: 20%; }
+.game-feature-art .rush-preview-gems { width: 90px; height: 90px; right: 0; bottom: 15%; }
+.game-feature-card > div:last-child { padding: 28px; align-self: center; }
+.game-feature-card h3 { margin: 8px 0 12px; font-size: 34px; }
+.game-feature-card p { font-size: 13px; line-height: 1.7; margin-bottom: 18px; }
+.game-feature-card .eyebrow { font-size: 9px; }
+.game-feature-card:not(.game-feature-soon):hover { border-color: var(--orange); }
+.game-feature-soon { display: flex; align-items: center; background: #e9e4d3; }
+.game-feature-soon > div { padding: 32px; }
+.match-card h3 { overflow-wrap: anywhere; }
+.rush-header .rush-room-title { min-width: 0; max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 800px) {
+  .game-catalog { grid-template-columns: 1fr; }
+  .game-feature-art { min-height: 220px; }
+  .game-feature-card > div:last-child { padding: 20px; }
+}
+@media (max-width: 600px) {
+  .hero-art .hero-art-top, .hero-art .hero-caption { padding: 14px 16px; }
+  .hero-art .hero-caption > span { max-width: 58%; }
+  .hero-art-top strong { font-size: 24px; }
+  .hero-art-top .outline-tag { font-size: 8px; }
+  .game-feature-card { grid-template-columns: 1fr; }
+  .game-feature-art { min-height: 180px; }
+  .game-feature-art .rush-preview-miner { left: 23%; bottom: 4%; }
+  .game-feature-art .rush-preview-gems { right: 22%; bottom: 5%; }
+  .rush-header .rush-room-title { max-width: 125px; }
+}
