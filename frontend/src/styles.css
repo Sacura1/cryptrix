@@ -356,13 +356,17 @@ summary:focus-visible,
 }
 .hero {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 55px;
   align-items: center;
   padding: 6px 0 65px;
 }
+.hero-copy {
+  container-type: inline-size;
+}
 .hero-copy h1 {
-  font-size: clamp(70px, 7.8vw, 108px);
+  font-size: clamp(32px, 18cqi, 82px);
+  overflow-wrap: anywhere;
   font-weight: 800;
   line-height: 0.93;
   letter-spacing: -1px;
@@ -591,7 +595,7 @@ summary:focus-visible,
 }
 .how-section {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 80px;
   border-top: 1px solid var(--border);
   padding-top: 48px;
@@ -2200,12 +2204,11 @@ footer > small {
     padding-top: 30px;
   }
   .hero {
-    grid-template-columns: 1.08fr 1fr;
+    grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr);
     gap: 32px;
     padding-bottom: 38px;
   }
   .hero-copy h1 {
-    font-size: 88px;
     margin-block: 20px;
   }
   .hero-art .arena-svg {
@@ -2256,9 +2259,6 @@ footer > small {
 @media (max-width: 1050px) {
   .hero {
     gap: 30px;
-  }
-  .hero-copy h1 {
-    font-size: 85px;
   }
   .match-layout {
     grid-template-columns: minmax(0, 1fr) 280px;
@@ -2355,9 +2355,6 @@ footer > small {
   }
   .hero {
     gap: 22px;
-  }
-  .hero-copy h1 {
-    font-size: 68px;
   }
   .hero-copy p {
     font-size: 13px;
@@ -2598,12 +2595,11 @@ footer > small {
     padding: 26px 18px 38px;
   }
   .hero {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     padding: 3px 0 30px;
     gap: 29px;
   }
   .hero-copy h1 {
-    font-size: 83px;
     margin: 19px 0 18px;
     line-height: 0.91;
   }
@@ -3456,9 +3452,6 @@ footer > small {
   .wallet-button > svg {
     display: none;
   }
-  .hero-copy h1 {
-    font-size: 73px;
-  }
   .hero-copy .button {
     padding: 12px 14px;
     font-size: 11px;
@@ -3564,12 +3557,6 @@ footer > small {
   }
   .replay-controls select {
     font-size: 14px;
-  }
-}
-
-@media (max-width: 600px) {
-  .hero-copy h1 {
-    font-size: clamp(58px, 17.2vw, 72px);
   }
 }
 
