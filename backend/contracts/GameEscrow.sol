@@ -12,9 +12,14 @@ contract GameEscrow is ReentrancyGuard {
     using SafeERC20 for IERC20;
     IERC20 public immutable usdc;
     address public immutable resolver;
-    uint256 public constant VERSION = 3;
+    /// @notice Account authorized to update feeRecipient.
+    address public immutable owner;
+    /// @notice Recipient of the platform fee charged on settled matches.
+    address public feeRecipient;
+    uint256 public constant VERSION = 4;
     uint256 public constant MIN_STAKE = 500_000;
     uint256 public constant MAX_STAKE = 5_000_000;
+    uint256 public constant FEE_BPS = 100;
     bytes32[5] public openRooms;
     mapping(address => bytes32) public currentMatch;
     enum Status { None, Open, Active, Settled, Cancelled }
@@ -30,6 +35,8 @@ contract GameEscrow is ReentrancyGuard {
     }
     mapping(bytes32 => Match) private matches;
     mapping(address => uint256) public credits;
+    /// @notice Accumulated platform fees claimable by feeRecipient (pull pattern — never pushed during settlement).
+    mapping(address => uint256) public feeCredits;
     mapping(bytes32 => bytes32) public resultHashes;
     mapping(bytes32 => uint8[]) private settledRanks;
     mapping(bytes32 => mapping(address => bytes32)) public equipmentCommitments;
@@ -44,6 +51,7 @@ contract GameEscrow is ReentrancyGuard {
     error RoomAlreadyOpen(bytes32 id);
     error OpenRoomLimit();
     error WalletBusy(bytes32 id);
+    error NotOwner();
     event MatchCreated(bytes32 indexed id, address indexed creator, uint8 game, uint256 stake, bytes32 rulesHash);
     event MatchJoined(bytes32 indexed id, address indexed entrant, uint8 slot);
     event EquipmentCommitted(bytes32 indexed id, address indexed entrant, bytes32 commitment);
@@ -51,11 +59,23 @@ contract GameEscrow is ReentrancyGuard {
     event MatchSettled(bytes32 indexed id, bytes32 resultHash, uint8[] rankGroups);
     event MatchCancelled(bytes32 indexed id);
     event CreditClaimed(address indexed account, uint256 amount);
+    event FeeClaimed(address indexed recipient, uint256 amount);
+    /// @notice Emitted when the owner updates the platform fee recipient.
+    event FeeRecipientUpdated(address indexed previous, address indexed next);
 
-    constructor(address token, address resultResolver) {
-        if (token == address(0) || resultResolver == address(0) || IERC20Metadata(token).decimals() != 6) revert InvalidTerms();
+    constructor(address token, address resultResolver, address feeOwner) {
+        if (token == address(0) || resultResolver == address(0) || IERC20Metadata(token).decimals() != 6 || feeOwner == address(0)) revert InvalidTerms();
         usdc = IERC20(token);
         resolver = resultResolver;
+        owner = feeOwner;
+        feeRecipient = feeOwner;
+    }
+    /// @notice Updates the platform fee recipient.
+    function setFeeRecipient(address newRecipient) external {
+        if (msg.sender != owner) revert NotOwner();
+        if (newRecipient == address(0)) revert InvalidTerms();
+        emit FeeRecipientUpdated(feeRecipient, newRecipient);
+        feeRecipient = newRecipient;
     }
     function capacity(uint8 game) public pure returns (uint8) {
         if (game > 1) revert InvalidTerms();
@@ -145,10 +165,15 @@ contract GameEscrow is ReentrancyGuard {
         resultHashes[id] = resultHash;
         settledRanks[id] = rankGroups;
         uint256 pot = m.stake * n;
+        uint256 fee = pot * FEE_BPS / 10_000;
+        uint256 prizePot = pot - fee;
+        // Pull pattern: credit fee to current feeRecipient — never push during settlement.
+        // This ensures a blocklisted or non-receiving feeRecipient can never freeze settlement.
+        if (fee != 0) feeCredits[feeRecipient] += fee;
         uint256 position;
         for (uint256 g; g <= maxGroup; ++g) {
             uint256 prize;
-            for (uint256 j; j < counts[g]; ++j) prize += _positionPrize(m.game, pot, position + j);
+            for (uint256 j; j < counts[g]; ++j) prize += _positionPrize(m.game, prizePot, position + j);
             uint256 share = prize / counts[g];
             uint256 remainder = prize % counts[g];
             for (uint256 i; i < n; ++i) if (rankGroups[i] == g) {
@@ -204,6 +229,14 @@ contract GameEscrow is ReentrancyGuard {
     /// @notice Anyone may pay gas, but nobody can change the beneficiary.
     function claimFor(address entrant) external nonReentrant {
         if (credits[entrant] != 0) _claim(entrant);
+    }
+    /// @notice Withdraw accumulated platform fees. Anyone may pay gas; funds go to the credited recipient only.
+    function claimFee(address recipient) external nonReentrant {
+        uint256 amount = feeCredits[recipient];
+        if (amount == 0) revert NoCredit();
+        feeCredits[recipient] = 0;
+        usdc.safeTransfer(recipient, amount);
+        emit FeeClaimed(recipient, amount);
     }
     function _claim(address entrant) private {
         uint256 amount = credits[entrant];
