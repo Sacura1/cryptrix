@@ -9,7 +9,7 @@
   "feeOwner": "0x2FC9FC86A26008984f492f45d4D0e4a456adD90a",
   "version": 4,
   "escrow": "0x041f94c56bd00715395e8de4a289e1c4958449df",
-  "escrowDeploymentBlock": "0",
+  "escrowDeploymentBlock": "65781814",
   "escrowTransaction": "0xf38a4a696fde6a45784a5e7f859796ae47673996f8485b5f2139c8abbe74b9fb",
   "solidity": "0.8.30",
   "evmVersion": "cancun",
