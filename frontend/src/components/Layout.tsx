@@ -2,6 +2,26 @@ import { useState } from 'react';
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom';
 import { useApp } from '../context';
 import { Icon } from './ui';
+
+const CHAIN_LABELS: Record<number, { label: string; network: string }> = {
+  5042002: { label: 'ARC', network: 'TESTNET' },
+  4227552942: { label: 'ARC', network: 'MAINNET' },
+};
+
+function NetworkBadge({ chainId }: { chainId: number | null }) {
+  const env = import.meta.env.VITE_NETWORK?.toUpperCase();
+  const isMainnet = env === 'MAINNET' || (chainId !== null && chainId !== 5042002);
+  const info = chainId !== null ? CHAIN_LABELS[chainId] : null;
+  const label = info?.label ?? 'ARC';
+  const network = info?.network ?? (isMainnet ? 'MAINNET' : 'TESTNET');
+  const ariaLabel = `Network: ${label} ${network}`;
+  return (
+    <span className={`network-badge${isMainnet ? ' network-badge-mainnet' : ''}`} aria-label={ariaLabel}>
+      <span className="network-badge-dot" aria-hidden="true" />
+      <span>{label} <span className="network-badge-label">{network}</span></span>
+    </span>
+  );
+}
 export function Layout() {
   const { pathname } = useLocation();
   const { config, configError, retryConfig } = useApp();
@@ -39,11 +59,8 @@ export function Layout() {
           ))}
         </nav>
         <div className="header-actions">
-          {config?.mode === 'paid' && config.chainId === 5042002 ? (
-            <span className="network-badge" aria-label="Network: Arc testnet">
-              <span className="network-badge-dot" aria-hidden="true" />
-              <span>ARC <span className="network-badge-label">TESTNET</span></span>
-            </span>
+          {config?.mode === 'paid' ? (
+            <NetworkBadge chainId={config.chainId} />
           ) : <Link className="button secondary header-guide" to="/guide">For agents</Link>}
           <button
             className="icon-button menu-button"
