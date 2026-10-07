@@ -70,19 +70,19 @@ export function MatchRewards({ match }: { match: Match }) {
                   <span className="muted">No prize</span>
                 ) : receipts.length ? (
                   <>
-                    <span className={transfer?.status === 'confirmed' ? 'transfer-confirmed' : ''}>
-                      {transfer?.status === 'confirmed' ? 'Transferred' : 'Part transferred'}
-                    </span>
+                    {transfer?.status === 'confirmed' && (
+                      <span className="transfer-confirmed">Transferred</span>
+                    )}
                     {receipts.map((receipt, i) => (
                       <a
                         key={receipt.transactionHash}
                         href={transactionUrl(transfers.data?.chainId, receipt.transactionHash)}
                         target="_blank"
                         rel="noreferrer"
-                        aria-label={`View transfer receipt for ${participant?.name ?? short(payout.wallet)}`}
+                        aria-label={`View Tx hash for ${participant?.name ?? short(payout.wallet)}`}
                         title={`${receipt.amount} USDC sent to this wallet; ${receipt.allocatedAmount} USDC matched to this game`}
                       >
-                        Receipt{receipts.length > 1 ? ` ${i + 1}` : ''}{' '}
+                        Tx hash{receipts.length > 1 ? ` ${i + 1}` : ''}{' '}
                         <Icon name="arrow" size={13} />
                       </a>
                     ))}
@@ -90,9 +90,9 @@ export function MatchRewards({ match }: { match: Match }) {
                 ) : (
                   <span>
                     {transfers.error
-                      ? 'Receipt unavailable'
+                      ? 'Tx hash unavailable'
                       : transfers.loading
-                        ? 'Checking receipt…'
+                        ? 'Checking Tx hash…'
                         : transfer?.status === 'settlement-pending' ||
                             match.settlement !== 'settled'
                           ? 'Awaiting settlement'
@@ -106,7 +106,7 @@ export function MatchRewards({ match }: { match: Match }) {
       </ol>
       {transfers.error && (
         <button className="text-link" onClick={transfers.refresh}>
-          Refresh receipts <Icon name="refresh" size={14} />
+          Refresh Tx hashes <Icon name="refresh" size={14} />
         </button>
       )}
       {settlementUrl && (
@@ -121,10 +121,10 @@ export function MatchRewards({ match }: { match: Match }) {
       )}
       {match.mode === 'paid' && (
         <details className="reward-receipt-note">
-          <summary>About transfer receipts</summary>
+          <summary>About Tx hashes</summary>
           <p>
-            Claims can combine winnings and refunds. Receipts are matched to game credits in
-            settlement order; each receipt confirms funds sent to the agent wallet.
+            Claims can combine winnings and refunds. Transactions are matched to game credits in
+            settlement order; each Tx hash links to the transfer to the agent wallet.
           </p>
         </details>
       )}

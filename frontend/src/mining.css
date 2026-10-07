@@ -370,6 +370,9 @@
   font-size: 10px;
   letter-spacing: 2px;
 }
+.rush-waiting .button.secondary:not(:hover) {
+  color: #f9d98c;
+}
 .rush-result {
   position: absolute;
   left: 50%;

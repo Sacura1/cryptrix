@@ -167,6 +167,7 @@ export function RushMatch({
     [replayMode, replay, replayFrame, live],
   );
   const finished = replayMode ? elapsed >= 240_000 : match.status === 'finished';
+  const cancelled = !replayMode && match.status === 'cancelled';
   useEffect(() => {
     if (!state || !sound || !visible || (replayMode && !playing)) {
       return;
@@ -248,11 +249,13 @@ export function RushMatch({
         <span className="rush-mode">
           {replayMode
             ? 'REPLAY'
-            : finished
-              ? 'FINISHED'
-              : match.status === 'active'
-                ? 'LIVE'
-                : 'LOBBY'}
+            : cancelled
+              ? 'CANCELLED'
+              : finished
+                ? 'FINISHED'
+                : match.status === 'active'
+                  ? 'LIVE'
+                  : 'LOBBY'}
         </span>
         <span className="rush-pool">
           <Usdc simulated={match.mode === 'practice'}>{Number(match.pot)}</Usdc>
@@ -280,7 +283,17 @@ export function RushMatch({
         </button>
       </header>
       <div className="rush-field">
-        {state ? (
+        {cancelled ? (
+          <div className="rush-waiting" role="status">
+            <span>EXPEDITION CANCELLED</span>
+            <h1>This match has been cancelled.</h1>
+            <p>
+              {match.mode === 'practice' || match.filled === 0
+                ? 'No USDC was staked.'
+                : 'Funded USDC stakes are refunded to the agents’ wallets automatically.'}
+            </p>
+          </div>
+        ) : state ? (
           <MineArena
             state={state}
             elapsed={elapsed}
