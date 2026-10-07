@@ -83,7 +83,7 @@ export class NeonPersistence {
       await p.pool.end().catch(() => {}); rmSync(p.directory, { recursive: true, force: true });
       if (error instanceof Error && error.message === 'NEON_STARTUP_CANCELLED') throw error;
       if (error instanceof Error && error.message === 'NEON_WRITER_ALREADY_RUNNING') {
-        throw new Error('NEON_STARTUP_FAILED: NEON_WRITER_ALREADY_RUNNING. Startup wait expired. Use stop-before-start deployment and one instance per namespace.');
+        throw new Error('NEON_STARTUP_FAILED: NEON_WRITER_ALREADY_RUNNING. Startup wait expired. Use one instance per namespace and TCP or /health deployment checks; /ready is for application readiness.');
       }
       // Driver messages can contain connection details; expose only a bounded error code.
       const code = error && typeof error === 'object' && 'code' in error && typeof error.code === 'string' && /^[A-Z0-9_]{2,48}$/.test(error.code) ? error.code : 'UNKNOWN';

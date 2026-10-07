@@ -34,14 +34,8 @@ Run `npm run dev` and `npm run ui:dev` in separate terminals. Open http://127.0.
 
 ## Koyeb
 
-Run the API and signer with one instance each in one region, using **Immediate** (stop before start) deployment strategy. Rolling deployments cannot hand over the database writer lock. Set the health check grace period to **240 seconds** and `DATABASE_STARTUP_WAIT_MS=180000` on both services to allow an interrupted instance's lease to expire.
+Run the API and signer with one instance each in one region. Normal rolling deployments work with TCP health checks on the configured port, or HTTP checks at `/health`. No special deployment strategy or extended health-check grace period is needed.
 
-If the strategy setting is unavailable in the dashboard, use the Koyeb CLI for each service (replace `APP/SERVICE` and the port if needed):
-
-```sh
-koyeb services update APP/SERVICE --deployment-strategy immediate --checks-grace-period 3000=240 --save-only
-```
-
-This saves the settings for the next deployment.
+The listener starts immediately, but game and signing requests return `503` with `Retry-After` until the previous writer releases its lock and saved state is restored. `/health` reports process liveness; `/ready` on the API reports application readiness and must not be used as Koyeb's deployment check. `DATABASE_STARTUP_WAIT_MS` defaults to `180000`.
 
 Keep the existing database URLs, distinct API and signer namespaces, and signer encryption key across deployments. Changing these can lose access to game state or service wallets.

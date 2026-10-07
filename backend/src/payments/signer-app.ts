@@ -1,13 +1,13 @@
-import Fastify from 'fastify';
+import Fastify, { type FastifyServerOptions } from 'fastify';
 import { timingSafeEqual } from 'node:crypto';
 import { z, ZodError } from 'zod';
 import { digest, Fault } from '../domain.js';
 import type { RemoteSigningProvider } from './signer.js';
 
 // Private service protocol: no key import/export, arbitrary call, or owner credential endpoint.
-export function buildSignerApp(signer: RemoteSigningProvider, credential: string, readiness: () => boolean = () => true) {
+export function buildSignerApp(signer: RemoteSigningProvider, credential: string, readiness: () => boolean = () => true, serverFactory?: FastifyServerOptions['serverFactory']) {
   if (credential.length < 32) throw new Error('Signer credential must contain at least 32 characters.');
-  const app = Fastify({ logger: false, bodyLimit: 2_000_000 });
+  const app = Fastify({ serverFactory, logger: false, bodyLimit: 2_000_000 });
   app.get('/health', (_req, reply) => reply.code(readiness() ? 200 : 503).send({ ok: readiness() }));
   app.addHook('onRequest', async req => {
     if (req.routeOptions.url === '/health') return;
