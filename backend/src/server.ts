@@ -6,10 +6,12 @@ import { randomUUID } from 'node:crypto';
 import { HttpSigningProvider, SigningService } from './payments/signer.js';
 import { PaymentWorker } from './payments/worker.js';
 import { ChainIndexer } from './indexer.js';
+import { withDatabaseStartup } from './database-startup.js';
 
 const env = z.object({
   MATCH_MODE: z.enum(['practice', 'paid']).default('practice'), HOST: z.string().default('127.0.0.1'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000), DATABASE_PATH: z.string().default('./data/platform.sqlite'), DATABASE_URL: z.string().url().optional(), STATE_NAMESPACE: z.string().optional(),
+  DATABASE_STARTUP_WAIT_MS: z.coerce.number().int().min(0).max(600_000).default(180_000),
   AUTH_ORIGIN: z.string().url().default('http://localhost:3000'), ARC_NETWORK: z.enum(['mainnet', 'testnet']).default('testnet'),
   ARC_RPC_URL: z.string().url().optional(), ESCROW_ADDRESS: z.string().optional(),
   SIGNER_URL: z.string().url().optional(), SIGNER_TOKEN: z.string().min(16).optional(),
@@ -31,13 +33,13 @@ if (!!env.SIGNER_URL !== !!env.SIGNER_TOKEN) throw new Error('Signer URL and ser
 const signing = chain && env.SIGNER_URL ? new SigningService(chain, new HttpSigningProvider(env.SIGNER_URL, env.SIGNER_TOKEN!)) : undefined;
 const holder = randomUUID();
 let ready = false;
-const { app, platform, store } = await buildApp({ database: env.DATABASE_PATH, databaseUrl: env.DATABASE_URL, stateNamespace: env.STATE_NAMESPACE ?? `backend:${env.ARC_NETWORK}:${env.MATCH_MODE}`, mode: env.MATCH_MODE, chain, origin: env.AUTH_ORIGIN, logger: true, minimumRoundMs: 10_000, miningEnabled: true, signing, opsToken: env.OPS_TOKEN, trustedProxyHops: env.TRUSTED_PROXY_HOPS, proxyToken: env.FRONTEND_PROXY_TOKEN, allowedOrigins: env.FRONTEND_ORIGINS?.split(',').map(value => value.trim()), readiness: () => {
+const { app, platform, store } = await withDatabaseStartup<Awaited<ReturnType<typeof buildApp>>>(env.DATABASE_STARTUP_WAIT_MS, storageStartup => buildApp({ storageStartup, database: env.DATABASE_PATH, databaseUrl: env.DATABASE_URL, stateNamespace: env.STATE_NAMESPACE ?? `backend:${env.ARC_NETWORK}:${env.MATCH_MODE}`, mode: env.MATCH_MODE, chain, origin: env.AUTH_ORIGIN, logger: true, minimumRoundMs: 10_000, miningEnabled: true, signing, opsToken: env.OPS_TOKEN, trustedProxyHops: env.TRUSTED_PROXY_HOPS, proxyToken: env.FRONTEND_PROXY_TOKEN, allowedOrigins: env.FRONTEND_ORIGINS?.split(',').map(value => value.trim()), readiness: (): { ready: boolean; checks: Record<string, boolean> } => {
   const time = Date.now();
   const fresh = (name: string, age: number) => !!store.db.prepare('SELECT 1 FROM service_status WHERE name=? AND failures=0 AND last_success>?').get(name, time - age);
   const paymentStatus = store.db.prepare("SELECT failures FROM service_status WHERE name='payments'").get();
   const checks = { storage: store.healthy, scheduler: fresh('clock', 5000), indexer: !chain || fresh('indexer', 30_000), reconciliation: !chain || fresh('reconciliation', 30_000), signer: !chain || (!!signing && fresh('signer', 30_000)), payments: !chain || !Number(paymentStatus?.failures ?? 0) };
   return { ready: ready && Object.values(checks).every(Boolean), checks };
-} });
+} }), resource => resource.app.close());
 const payments = signing ? new PaymentWorker(platform, signing) : undefined;
 const indexer = chain ? new ChainIndexer(platform, chain, BigInt(env.ESCROW_DEPLOYMENT_BLOCK!)) : undefined;
 let syncTask: Promise<void> | undefined, ticks = 0, storageStopping = false;

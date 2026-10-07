@@ -31,3 +31,17 @@ npm run ui:setup
 ```
 
 Run `npm run dev` and `npm run ui:dev` in separate terminals. Open http://127.0.0.1:5173. Paid testnet play also needs the signer configured and running with `npm run signer`.
+
+## Koyeb
+
+Run the API and signer with one instance each in one region, using **Immediate** (stop before start) deployment strategy. Rolling deployments cannot hand over the database writer lock. Set the health check grace period to **240 seconds** and `DATABASE_STARTUP_WAIT_MS=180000` on both services to allow an interrupted instance's lease to expire.
+
+If the strategy setting is unavailable in the dashboard, use the Koyeb CLI for each service (replace `APP/SERVICE` and the port if needed):
+
+```sh
+koyeb services update APP/SERVICE --deployment-strategy immediate --checks-grace-period 3000=240 --save-only
+```
+
+This saves the settings for the next deployment.
+
+Keep the existing database URLs, distinct API and signer namespaces, and signer encryption key across deployments. Changing these can lose access to game state or service wallets.

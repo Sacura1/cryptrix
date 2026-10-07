@@ -1,4 +1,4 @@
-import { NeonPersistence } from '../persistence.js';
+import { NeonPersistence, type WriterStartupOptions } from '../persistence.js';
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
@@ -10,12 +10,12 @@ import type { SigningContext, UnsignedTransaction } from './signer.js';
 export class SignerKeystore {
   readonly db: DatabaseSync;
   persistence?: NeonPersistence;
-  static async open(path: string, encryptionKey: Buffer, url?: string, namespace = 'signer:testnet') {
+  static async open(path: string, encryptionKey: Buffer, url?: string, namespace = 'signer:testnet', startup?: WriterStartupOptions) {
     if (!url) return new SignerKeystore(path, encryptionKey);
-    const persistence = await NeonPersistence.open(url, namespace);
-    const keys = new SignerKeystore(persistence.path, encryptionKey);
-    try { await persistence.attach(keys.db); keys.persistence = persistence; return keys; }
-    catch (error) { keys.db.close(); await persistence.close(); persistence.cleanup(); throw error; }
+    const persistence = await NeonPersistence.open(url, namespace, startup);
+    let keys: SignerKeystore | undefined;
+    try { keys = new SignerKeystore(persistence.path, encryptionKey); await persistence.attach(keys.db); keys.persistence = persistence; return keys; }
+    catch (error) { keys?.db.close(); await persistence.close(); persistence.cleanup(); throw error; }
   }
   async flush() { await this.persistence?.flush(); }
   async shutdown() { await this.persistence?.close(); this.close(); this.persistence?.cleanup(); }

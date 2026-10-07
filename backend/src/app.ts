@@ -15,8 +15,9 @@ import { miningRules } from './mining.js';
 import { miningCommandSchema } from './mining.js';
 import { agentGuide, openapi } from './discovery.js';
 import { PublicArena } from './public-arena.js';
+import type { WriterStartupOptions } from './persistence.js';
 
-export interface AppOptions { database?: string; databaseUrl?: string; stateNamespace?: string; mode?: 'practice' | 'paid'; now?: () => number; chain?: ChainGateway; origin?: string; logger?: boolean; signing?: SigningService; opsToken?: string; allowedOrigins?: string[]; minimumRoundMs?: number; miningEnabled?: boolean; readiness?: () => { ready: boolean; checks: Record<string, boolean> }; trustedProxyHops?: number; proxyToken?: string }
+export interface AppOptions { database?: string; databaseUrl?: string; stateNamespace?: string; storageStartup?: WriterStartupOptions; mode?: 'practice' | 'paid'; now?: () => number; chain?: ChainGateway; origin?: string; logger?: boolean; signing?: SigningService; opsToken?: string; allowedOrigins?: string[]; minimumRoundMs?: number; miningEnabled?: boolean; readiness?: () => { ready: boolean; checks: Record<string, boolean> }; trustedProxyHops?: number; proxyToken?: string }
 const address = z.string().regex(/^0x[0-9a-fA-F]{40}$/);
 const signature = z.string().regex(/^0x[0-9a-fA-F]{2,4096}$/);
 const matchId = (req: FastifyRequest) => z.object({ id: z.string().regex(/^0x[0-9a-fA-F]{64}$/) }).parse(req.params).id;
@@ -29,7 +30,7 @@ function bearer(req: FastifyRequest) {
 function key(req: FastifyRequest) { return z.string().parse(req.headers['idempotency-key']); }
 
 export async function buildApp(options: AppOptions = {}) {
-  const store = await Store.open(options.database, options.databaseUrl, options.stateNamespace);
+  const store = await Store.open(options.database, options.databaseUrl, options.stateNamespace, options.storageStartup);
   const platform = new Platform(store, options.mode, options.now, options.chain, options.origin, options.minimumRoundMs, options.miningEnabled);
   const publicArena = new PublicArena(platform);
   const app = Fastify({ trustProxy: options.trustedProxyHops ? (_address: string, hop: number) => hop < options.trustedProxyHops! : false, logger: options.logger ? { redact: ['req.headers.authorization', 'req.headers.cookie', 'req.headers.x-cryptrix-proxy', 'body.signature', 'runtimeToken', 'token'] } : false, bodyLimit: 16_384, requestTimeout: 30_000 });
