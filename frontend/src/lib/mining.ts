@@ -81,6 +81,14 @@ export const minerColors = [
 ];
 export const timeLabel = (ms: number) =>
   `${Math.floor(Math.max(0, ms) / 60000)}:${String(Math.floor(Math.max(0, ms) / 1000) % 60).padStart(2, '0')}`;
+export function replayStart(replay?: MineReplay) {
+  // Keep the recorded clock, but skip the initial wait for the agents' first commands.
+  const first = replay?.frames.find(
+    (frame) =>
+      frame.players.some((player) => player.job) || frame.events.some((event) => event.agentId),
+  );
+  return first ? Math.max(0, first.elapsedMs - 1000) : 0;
+}
 export function replayMine(replay: MineReplay, elapsed: number): MineState {
   const index = Math.min(replay.frames.length - 1, Math.floor(elapsed / 1000) - 1);
   const frame = index >= 0 ? replay.frames[index] : replay.initialState;

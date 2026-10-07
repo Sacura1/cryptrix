@@ -12,6 +12,7 @@ import {
   eventText,
   eventSubject,
   replayMine,
+  replayStart,
   timeLabel,
   type MineReplay,
   type MineState,
@@ -34,7 +35,9 @@ export function RushMatch({
   testFailure?: string;
   testDiagnostics?: boolean;
 }) {
-  const [elapsed, setElapsed] = useState(0),
+  const [elapsed, setElapsed] = useState(() =>
+      replayMode ? replayStart(replay) : ((match.state as MineState | null)?.elapsedMs ?? 0),
+    ),
     [playing, setPlaying] = useState(replayMode),
     [speed, setSpeed] = useState(1);
   const [seekRevision, setSeekRevision] = useState(0);
@@ -68,12 +71,21 @@ export function RushMatch({
   );
   const live = match.state as MineState | null;
   useEffect(() => {
+    setElapsed(replayMode ? replayStart(replay) : (live?.elapsedMs ?? 0));
+    setPlaying(replayMode);
+    lastAudio.current =
+      replayMode && replay
+        ? replayMine(replay, replayStart(replay)).eventSequence
+        : (live?.eventSequence ?? 0);
+    lastWork.current = 0;
+  }, [match.id, replayMode, replay]);
+  useEffect(() => {
     setDirector(false);
     setFollow(undefined);
   }, [match.id]);
   useEffect(() => {
     received.current = performance.now();
-  }, [live?.elapsedMs]);
+  }, [match.id, live?.elapsedMs]);
   useEffect(() => {
     const change = () => {
       setVisible(!document.hidden);
@@ -140,7 +152,7 @@ export function RushMatch({
     } else if (stage.current) setScreenMode(await enterGameFullscreen(stage.current));
   }
   useEffect(() => {
-    if (!visible || (replayMode && !playing)) return;
+    if (!visible || (replayMode && (!playing || !replay))) return;
     if (!replayMode && match.status !== 'active') {
       setElapsed(live?.elapsedMs ?? 0);
       return;
@@ -157,13 +169,13 @@ export function RushMatch({
       );
     }, 200);
     return () => window.clearInterval(timer);
-  }, [playing, speed, replayMode, visible, live?.elapsedMs, match.status]);
+  }, [playing, speed, replayMode, replay, visible, live?.elapsedMs, match.status]);
   useEffect(() => {
     if (elapsed >= 240_000 && replayMode) setPlaying(false);
   }, [elapsed, replayMode]);
   const replayFrame = Math.floor(elapsed / 1000);
   const state = useMemo(
-    () => (replayMode && replay ? replayMine(replay, replayFrame * 1000) : live),
+    () => (replayMode ? (replay ? replayMine(replay, replayFrame * 1000) : null) : live),
     [replayMode, replay, replayFrame, live],
   );
   const finished = replayMode ? elapsed >= 240_000 : match.status === 'finished';
@@ -325,6 +337,10 @@ export function RushMatch({
               setDirector(false);
             }}
           />
+        ) : replayMode ? (
+          <div className="rush-waiting" role="status">
+            <p>Loading replay…</p>
+          </div>
         ) : (
           <div className="rush-waiting">
             <span>EXPEDITION FORMING</span>
@@ -341,55 +357,57 @@ export function RushMatch({
               <strong>EXTRACTION LEADERS</strong>
               <span>60 / 25 / 15%</span>
             </div>
-            {standings.map((p, place) => {
-              const index = state.players.findIndex((a) => a.id === p.id);
-              return (
-                <button
-                  key={p.id}
-                  className={`rush-standing ${follow === p.id ? 'selected' : ''} ${!p.alive ? 'eliminated' : ''}`}
-                  onClick={() => {
-                    setFollow(p.id);
-                    setDirector(false);
-                  }}
-                  title={`Follow ${names[p.id]}`}
-                >
-                  <span className="rush-rank">{place + 1}</span>
-                  <AgentAvatar
-                    className="rush-portrait"
-                    agentId={p.id}
-                    name={names[p.id]}
-                    variant={index}
-                    numbered
-                  />
-                  <span className="rush-agent-name">
-                    <strong>{names[p.id]}</strong>
-                    <small>
-                      {!p.alive
-                        ? 'Eliminated'
-                        : p.venomUntil
-                          ? `Venom · ${Math.ceil(Math.max(0, p.venomUntil - elapsed) / 1000)}s`
-                          : p.crown
-                            ? 'Carrying the Crown'
-                            : p.job?.phase === 'dig'
-                              ? 'Excavating'
-                              : p.job?.phase === 'walk'
-                                ? `Heading to ${p.job.type}`
-                                : p.job?.type === 'bank'
-                                  ? 'Extracting'
-                                  : p.job?.phase === 'inspect'
-                                    ? 'Inspecting'
-                                    : finished
-                                      ? 'Extraction closed'
-                                      : (p.job?.type ?? 'Choosing a job')}
-                    </small>
-                  </span>
-                  <span className="rush-agent-score">
-                    <strong>◆ {p.deposited}</strong>
-                    <small>{p.cargo ? `+${p.cargo} carried` : `${p.health}/6 HP`}</small>
-                  </span>
-                </button>
-              );
-            })}
+            <div className="rush-standings-list">
+              {standings.map((p, place) => {
+                const index = state.players.findIndex((a) => a.id === p.id);
+                return (
+                  <button
+                    key={p.id}
+                    className={`rush-standing ${follow === p.id ? 'selected' : ''} ${!p.alive ? 'eliminated' : ''}`}
+                    onClick={() => {
+                      setFollow(p.id);
+                      setDirector(false);
+                    }}
+                    title={`Follow ${names[p.id]}`}
+                  >
+                    <span className="rush-rank">{place + 1}</span>
+                    <AgentAvatar
+                      className="rush-portrait"
+                      agentId={p.id}
+                      name={names[p.id]}
+                      variant={index}
+                      numbered
+                    />
+                    <span className="rush-agent-name">
+                      <strong>{names[p.id]}</strong>
+                      <small>
+                        {!p.alive
+                          ? 'Eliminated'
+                          : p.venomUntil
+                            ? `Venom · ${Math.ceil(Math.max(0, p.venomUntil - elapsed) / 1000)}s`
+                            : p.crown
+                              ? 'Carrying the Crown'
+                              : p.job?.phase === 'dig'
+                                ? 'Excavating'
+                                : p.job?.phase === 'walk'
+                                  ? `Heading to ${p.job.type}`
+                                  : p.job?.type === 'bank'
+                                    ? 'Extracting'
+                                    : p.job?.phase === 'inspect'
+                                      ? 'Inspecting'
+                                      : finished
+                                        ? 'Extraction closed'
+                                        : (p.job?.type ?? 'Choosing a job')}
+                      </small>
+                    </span>
+                    <span className="rush-agent-score">
+                      <strong>◆ {p.deposited}</strong>
+                      <small>{p.cargo ? `+${p.cargo} carried` : `${p.health}/6 HP`}</small>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
             <div className="rush-score-note">Only extracted treasure counts.</div>
           </aside>
         )}
@@ -432,7 +450,7 @@ export function RushMatch({
                 <button
                   className="button"
                   onClick={() => {
-                    seek(0);
+                    seek(replayStart(replay));
                     setPlaying(true);
                     setDirector(false);
                     setFollow(undefined);
