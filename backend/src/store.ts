@@ -1,4 +1,4 @@
-import { NeonPersistence } from './persistence.js';
+import { NeonPersistence, type WriterStartupOptions } from './persistence.js';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -9,12 +9,12 @@ export const DATABASE_VERSION = 3;
 export class Store {
   readonly db: DatabaseSync;
   persistence?: NeonPersistence;
-  static async open(path?: string, url?: string, namespace = 'backend:testnet'): Promise<Store> {
+  static async open(path?: string, url?: string, namespace = 'backend:testnet', startup?: WriterStartupOptions): Promise<Store> {
     if (!url) return new Store(path);
-    const persistence = await NeonPersistence.open(url, namespace);
-    const store = new Store(persistence.path);
-    try { await persistence.attach(store.db); store.persistence = persistence; return store; }
-    catch (error) { store.db.close(); await persistence.close(); persistence.cleanup(); throw error; }
+    const persistence = await NeonPersistence.open(url, namespace, startup);
+    let store: Store | undefined;
+    try { store = new Store(persistence.path); await persistence.attach(store.db); store.persistence = persistence; return store; }
+    catch (error) { store?.db.close(); await persistence.close(); persistence.cleanup(); throw error; }
   }
   get healthy(): boolean { return this.persistence?.healthy ?? true; }
   async flush(): Promise<void> { await this.persistence?.flush(); }
