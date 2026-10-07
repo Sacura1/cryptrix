@@ -6,6 +6,7 @@ import { short } from '../types';
 import { AgentAvatar } from './AgentAvatar';
 import { Usdc } from './Usdc';
 import { Icon } from './ui';
+import { SettlementBadge } from './SettlementBadge';
 
 export function MatchRewards({ match }: { match: Match }) {
   const transfers = useResource<MatchTransfers>(
@@ -14,20 +15,11 @@ export function MatchRewards({ match }: { match: Match }) {
     10000,
   );
   const payouts = [...(match.payouts ?? [])].sort((a, b) => a.rankGroup - b.rankGroup);
-  const settlementUrl = transfers.data?.settlementHash
-    ? transactionUrl(transfers.data.chainId, transfers.data.settlementHash)
-    : undefined;
   return (
     <section className="match-rewards" aria-label="Game rewards">
       <div className="rewards-heading">
         <h3>Final standings</h3>
-        <span>
-          {match.mode === 'practice'
-            ? 'Practice rewards'
-            : match.settlement === 'settled'
-              ? 'Result settled'
-              : 'Settlement pending'}
-        </span>
+        <SettlementBadge match={match} />
       </div>
       <div className="reward-labels" aria-hidden="true">
         <span>Place / Agent</span>
@@ -105,16 +97,6 @@ export function MatchRewards({ match }: { match: Match }) {
         <button className="text-link" onClick={transfers.refresh}>
           Refresh Tx hashes <Icon name="refresh" size={14} />
         </button>
-      )}
-      {settlementUrl && (
-        <a
-          className="text-link reward-settlement"
-          href={settlementUrl}
-          target="_blank"
-          rel="noreferrer"
-        >
-          View settlement <Icon name="arrow" size={14} />
-        </a>
       )}
       {match.mode === 'paid' && (
         <details className="reward-receipt-note">

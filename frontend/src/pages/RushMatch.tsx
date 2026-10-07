@@ -1,10 +1,11 @@
 import { Usdc } from '../components/Usdc';
 import { MatchRewards } from '../components/MatchRewards';
+import { SettlementBadge } from '../components/SettlementBadge';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MineArena } from '../components/MineArena';
 import { AgentAvatar } from '../components/AgentAvatar';
-import { api, message } from '../lib/api';
+import { api } from '../lib/api';
 import { useGameAudio } from '../lib/use-game-audio';
 import { enterGameFullscreen, leaveGameFullscreen, type ScreenMode } from '../lib/fullscreen';
 import { Icon } from '../components/ui';
@@ -13,6 +14,8 @@ import {
   eventSubject,
   replayMine,
   replayStart,
+  replayDiscoveries,
+  miningHasStarted,
   timeLabel,
   type MineReplay,
   type MineState,
@@ -20,6 +23,7 @@ import {
 import type { Match } from '../types';
 import type { SoundKind } from '../lib/sound-cues';
 import { liveTime } from '../lib/live-match';
+import { useResource } from '../hooks';
 
 export function RushMatch({
   match,
@@ -55,11 +59,17 @@ export function RushMatch({
     testSound,
   } = useGameAudio();
   const sound = soundEnabled && audioReady && volume > 0;
-  const [verification, setVerification] = useState('');
   const [screenMode, setScreenMode] = useState<ScreenMode>('window');
   const [menuTab, setMenuTab] = useState('mission'),
     [level, setLevel] = useState(0);
   const [visible, setVisible] = useState(!document.hidden);
+  const [startedMatch, setStartedMatch] = useState('');
+  const [historyRequested, setHistoryRequested] = useState('');
+  const discoveryHistory = useResource<MineReplay>(
+    historyRequested === match.id && match.status === 'finished' && !replay
+      ? `/matches/${match.id}/replay`
+      : null,
+  );
   const stage = useRef<HTMLDivElement>(null),
     dialog = useRef<HTMLElement>(null),
     lastAudio = useRef(0),
@@ -180,6 +190,25 @@ export function RushMatch({
   );
   const finished = replayMode ? elapsed >= 240_000 : match.status === 'finished';
   const cancelled = !replayMode && match.status === 'cancelled';
+  const hasStarted = !!state && miningHasStarted(state);
+  useEffect(() => {
+    if (hasStarted) setStartedMatch(match.id);
+  }, [hasStarted, match.id]);
+  useEffect(() => {
+    if (details && menuTab === 'events' && finished && !replay) setHistoryRequested(match.id);
+  }, [details, menuTab, finished, replay, match.id]);
+  const discoveryReplay = replay ?? discoveryHistory.data;
+  const discoveries = useMemo(
+    () =>
+      finished
+        ? discoveryReplay
+          ? replayDiscoveries(discoveryReplay)
+          : []
+        : (state?.events
+            .filter((event) => event.kind !== 'job' && event.kind !== 'dig')
+            .slice(-8) ?? []),
+    [finished, discoveryReplay, state],
+  );
   useEffect(() => {
     if (!state || !sound || !visible || (replayMode && !playing)) {
       return;
@@ -223,14 +252,6 @@ export function RushMatch({
     setElapsed(value);
     lastAudio.current = replay ? replayMine(replay, value).eventSequence : 0;
     lastWork.current = value;
-  }
-  async function verify() {
-    try {
-      const r = await api<{ verified: boolean }>(`/matches/${match.id}/verification`);
-      setVerification(r.verified ? 'Replay checked.' : 'Verification failed.');
-    } catch (error) {
-      setVerification(message(error));
-    }
   }
   const standings = useMemo(
     () => (state ? [...state.players].sort((a, b) => b.deposited - a.deposited) : []),
@@ -309,6 +330,13 @@ export function RushMatch({
           <MineArena
             state={state}
             elapsed={elapsed}
+            showAnnouncements={!finished}
+            waitingForAgents={
+              !finished &&
+              (replayMode || match.status === 'active') &&
+              !hasStarted &&
+              startedMatch !== match.id
+            }
             cameraSession={`${match.id}:${seekRevision}`}
             animationRate={
               visible && !finished && (replayMode ? playing : match.status === 'active')
@@ -412,62 +440,64 @@ export function RushMatch({
           </aside>
         )}
         {finished && (
-          <div className="rush-result">
-            <div className="rush-result-gem" aria-hidden="true">
-              ◆
-            </div>
-            <span>EXTRACTION CLOSED</span>
-            <h1>
-              {standings[0]
-                ? `${names[standings[0].id]} ${standings.filter((p) => p.deposited === standings[0].deposited).length > 1 ? '& tied miners lead' : 'takes first'}.`
-                : 'Expedition complete.'}
-            </h1>
-            <div className="rush-podium">
-              {standings.slice(0, 3).map((p, place) => {
-                const index = state!.players.findIndex((a) => a.id === p.id);
-                return (
-                  <div key={p.id} className={`rush-podium-place place-${place + 1}`}>
-                    <span>#{place + 1}</span>
-                    <AgentAvatar
-                      className="rush-portrait"
-                      agentId={p.id}
-                      name={names[p.id]}
-                      variant={index}
-                    />
-                    <strong>{names[p.id]}</strong>
-                    <b>◆ {p.deposited}</b>
-                  </div>
-                );
-              })}
-            </div>
-            <small>
-              {match.mode === 'practice'
-                ? 'Practice result. No USDC moves.'
-                : `Settlement: ${match.settlement ?? 'pending'}`}
-            </small>
-            <div className="button-row">
-              {replay && (
+          <div className="rush-result-overlay">
+            <div className="rush-result">
+              <div className="rush-result-gem" aria-hidden="true">
+                ◆
+              </div>
+              <span>EXTRACTION CLOSED</span>
+              <h1>
+                {standings[0]
+                  ? `${names[standings[0].id]} ${standings.filter((p) => p.deposited === standings[0].deposited).length > 1 ? '& tied miners lead' : 'takes first'}.`
+                  : 'Expedition complete.'}
+              </h1>
+              <div className="rush-podium">
+                {standings.slice(0, 3).map((p, place) => {
+                  const index = state!.players.findIndex((a) => a.id === p.id);
+                  return (
+                    <div key={p.id} className={`rush-podium-place place-${place + 1}`}>
+                      <span>#{place + 1}</span>
+                      <AgentAvatar
+                        className="rush-portrait"
+                        agentId={p.id}
+                        name={names[p.id]}
+                        variant={index}
+                      />
+                      <strong>{names[p.id]}</strong>
+                      <b>◆ {p.deposited}</b>
+                    </div>
+                  );
+                })}
+              </div>
+              {match.mode === 'practice' ? (
+                <small>Practice result. No USDC moves.</small>
+              ) : (
+                <SettlementBadge match={match} />
+              )}
+              <div className="button-row">
+                {replay && (
+                  <button
+                    className="button"
+                    onClick={() => {
+                      seek(replayStart(replay));
+                      setPlaying(true);
+                      setDirector(false);
+                      setFollow(undefined);
+                    }}
+                  >
+                    Watch again
+                  </button>
+                )}
                 <button
-                  className="button"
+                  className="button secondary"
                   onClick={() => {
-                    seek(replayStart(replay));
-                    setPlaying(true);
-                    setDirector(false);
-                    setFollow(undefined);
+                    setMenuTab('result');
+                    setDetails(true);
                   }}
                 >
-                  Watch again
+                  Result & proof
                 </button>
-              )}
-              <button
-                className="button secondary"
-                onClick={() => {
-                  setMenuTab('result');
-                  setDetails(true);
-                }}
-              >
-                Result & proof
-              </button>
+              </div>
             </div>
           </div>
         )}
@@ -568,38 +598,57 @@ export function RushMatch({
                 </button>
               ))}
             </nav>
-            <div className="rush-menu-body" hidden={menuTab !== 'mission'}>
+            <div className="rush-menu-body rush-mission" hidden={menuTab !== 'mission'}>
               <h3>Dig. Survive. Extract.</h3>
-              <p>
-                Eight miners, four minutes, a 24 × 24 field. Inspect deposits, excavate with tools
-                and take diamonds back to an extraction station. Carried treasure does not score
-                until banked.
-              </p>
-              <p>
-                Snakes can bite. Treat venom within 30 seconds using an antidote or a clinic.
-                Cracking ground warns before a cave-in; escape or clear the blocked passage. An
-                eliminated miner retains banked diamonds and drops its cargo.
-              </p>
-              <p>
-                The Crown Diamond is worth 35. Its carrier moves slowly and remains visible. Finding
-                it does not end the game.
-              </p>
-              <p>
-                Top three banked scores share 60%, 25%, 15% of the filled pool. Ties share prizes
-                for occupied places. Stake:{' '}
-                <Usdc simulated={match.mode === 'practice'}>{Number(match.stake)}</Usdc> per miner.
-              </p>
-              <p>
-                A fresh seed creates each new expedition. Terrain, starting positions, stations,
-                hidden treasure and the Crown location change. A replay reproduces its original map.
-              </p>
-              <p className="note">
-                {match.mode === 'practice'
-                  ? 'This is a recorded/local practice game. Amounts are simulated. No USDC is staked or paid.'
-                  : match.settlement === 'settled'
-                    ? 'Settlement confirmed.'
-                    : 'Rewards settle through the game escrow. Results are verified by Cryptrix.'}
-              </p>
+              <p className="rush-mission-intro">Bank the most diamonds before time runs out.</p>
+              <dl className="rush-mission-facts">
+                <div>
+                  <dt>Agents</dt>
+                  <dd>8</dd>
+                </div>
+                <div>
+                  <dt>Duration</dt>
+                  <dd>4 minutes</dd>
+                </div>
+                <div>
+                  <dt>Entry stake</dt>
+                  <dd>
+                    <Usdc>{Number(match.stake)}</Usdc>
+                  </dd>
+                </div>
+              </dl>
+              <section className="rush-mission-section">
+                <h4>Bank your treasure</h4>
+                <p>
+                  Explore deposits, dig for diamonds and return them to an extraction station. Only
+                  banked diamonds count.
+                </p>
+              </section>
+              <section className="rush-mission-section">
+                <h4>Stay alive</h4>
+                <ul>
+                  <li>Treat venom within 30 seconds with an antidote or at a clinic.</li>
+                  <li>Move away from cracking ground before it caves in.</li>
+                  <li>Eliminated agents keep banked diamonds but drop their cargo.</li>
+                </ul>
+              </section>
+              <section className="rush-mission-section">
+                <h4>Find the Crown</h4>
+                <p>
+                  The Crown Diamond is worth 35 diamonds. Its carrier moves slowly and stays
+                  visible. The game continues until time runs out.
+                </p>
+              </section>
+              <section className="rush-mission-section">
+                <h4>{match.mode === 'practice' ? 'Rewards' : 'Win USDC'}</h4>
+                <p>
+                  The top three banked scores share <strong>60% / 25% / 15%</strong> of the prize
+                  pool. Ties share the prizes for their places.
+                </p>
+              </section>
+              {match.mode === 'practice' && (
+                <p className="note">Practice game. No USDC is staked or paid.</p>
+              )}
               {screenMode === 'expanded' && (
                 <p className="note">
                   This browser does not allow native fullscreen here. Expanded game view is active;
@@ -654,13 +703,23 @@ export function RushMatch({
               </p>
             </div>
             <div className="rush-menu-body" hidden={menuTab !== 'events'}>
-              <h3>Recent discoveries</h3>
-              {state?.events
-                .filter((e) => e.kind !== 'job' && e.kind !== 'dig')
-                .slice(-8)
+              <h3>{finished ? 'Discoveries' : 'Recent discoveries'}</h3>
+              {finished && !discoveryReplay && !discoveryHistory.error && (
+                <p role="status">Loading discoveries…</p>
+              )}
+              {finished && discoveryHistory.error && !discoveryReplay && (
+                <>
+                  <p role="status">Could not load discoveries. {discoveryHistory.error}</p>
+                  <button className="button secondary" onClick={discoveryHistory.refresh}>
+                    Try again
+                  </button>
+                </>
+              )}
+              {discoveries
+                .slice()
                 .reverse()
                 .map((e) => {
-                  const subject = eventSubject(e, state.players, names);
+                  const subject = eventSubject(e, state?.players ?? [], names);
                   return (
                     <div className="rush-log-line rush-agent-event" key={e.id}>
                       {subject ? (
@@ -683,44 +742,19 @@ export function RushMatch({
                     </div>
                   );
                 })}
-              {!state?.events.length && <p>The expedition has not started yet.</p>}
+              {!discoveries.length && (!finished || discoveryReplay) && (
+                <p>
+                  {finished
+                    ? 'No discoveries were recorded.'
+                    : state
+                      ? 'Waiting for the first discovery.'
+                      : 'The expedition has not started yet.'}
+                </p>
+              )}
             </div>
             {match.status === 'finished' && (
               <div className="rush-menu-body" hidden={menuTab !== 'result'}>
                 <MatchRewards match={match} />
-                <h3>Replay</h3>
-                <details className="rush-proof">
-                  <summary>Replay verification hash</summary>
-                  <p>{match.resultHash}</p>
-                </details>
-                <div className="result-proof-actions">
-                  {replay && (
-                    <button
-                      className="button secondary"
-                      onClick={() => {
-                        const link = document.createElement('a');
-                        link.href = URL.createObjectURL(
-                          new Blob([JSON.stringify(replay)], { type: 'application/json' }),
-                        );
-                        link.download = `cache-rush-${match.id}.json`;
-                        link.click();
-                        URL.revokeObjectURL(link.href);
-                      }}
-                    >
-                      Download replay
-                    </button>
-                  )}
-                  {!replayMode && (
-                    <button className="button secondary" onClick={() => void verify()}>
-                      Verify result
-                    </button>
-                  )}
-                </div>
-                {verification && (
-                  <p className="replay-check-status" role="status">
-                    {verification}
-                  </p>
-                )}
               </div>
             )}
           </section>

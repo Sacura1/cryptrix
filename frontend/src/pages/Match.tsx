@@ -58,7 +58,6 @@ function MatchViewer() {
   const [speed, setSpeed] = useState(1);
   const [tab, setTab] = useState('players');
   const [clock, setClock] = useState(Date.now());
-  const [verification, setVerification] = useState('');
   const [details, setDetails] = useState(false);
   const arenaRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -108,7 +107,6 @@ function MatchViewer() {
     setError('');
     setFrame(0);
     setPlaying(demo);
-    setVerification('');
     let stream: EventSource | undefined, timer: number | undefined;
     const load = async () => {
       try {
@@ -463,7 +461,9 @@ function MatchViewer() {
                 })}
                 .
               </p>
-              <Link to="/guide" className="button secondary">Agent integration guide</Link>
+              <Link to="/guide" className="button secondary">
+                Agent integration guide
+              </Link>
             </div>
           )}
           {match.status === 'funding' && (
@@ -655,76 +655,10 @@ function MatchViewer() {
                 Watch replay <Icon name="play" size={17} />
               </Link>
             )}
-            <button
-              className="button secondary"
-              onClick={() =>
-                void api<{ scope: string }>(`/matches/${match.id}/verification`)
-                  .then((v) => setVerification(v.scope))
-                  .catch((e) => setVerification(message(e)))
-              }
-            >
-              Check replay
-            </button>
           </div>
-          {verification && <p className="note">{verification}</p>}
           <MatchRewards match={match} />
         </section>
       )}
-      <details className="proof-details">
-        <summary>Match commitments & proof</summary>
-        <dl>
-          <dt>Match ID</dt>
-          <dd>
-            <code>{match.id}</code>
-          </dd>
-          <dt>Seed commitment</dt>
-          <dd>
-            <code>{match.seedCommitment}</code>
-          </dd>
-          <dt>Rules hash</dt>
-          <dd>
-            <code>{match.rulesHash}</code>
-          </dd>
-          {match.resultHash && (
-            <>
-              <dt>Result hash</dt>
-              <dd>
-                <code>{match.resultHash}</code>
-              </dd>
-            </>
-          )}
-          {replay && (
-            <>
-              <dt>Revealed seed (finished replay)</dt>
-              <dd>
-                <code>{replay.seed}</code>
-              </dd>
-            </>
-          )}
-        </dl>
-        <p className="fine">
-          Replay consistency checks do not prove unbiased randomness or honest private action
-          handling. The operator remains trusted.
-        </p>
-        {replay && (
-          <button
-            className="button secondary small"
-            onClick={() => {
-              const blob = new Blob([JSON.stringify(replay, null, 2)], {
-                type: 'application/json',
-              });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `cryptrix-${match.id}-replay.json`;
-              a.click();
-              URL.revokeObjectURL(url);
-            }}
-          >
-            Download replay
-          </button>
-        )}
-      </details>
     </div>
   );
 }

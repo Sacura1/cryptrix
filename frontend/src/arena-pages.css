@@ -16,9 +16,45 @@
   margin: 0;
   font-size: 30px;
 }
-.rewards-heading > span {
-  color: var(--reward-muted);
+.settlement-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #a8b79b;
+  border-radius: 999px;
+  background: #e4eddd;
+  color: #355b37;
   font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.2px;
+}
+.settlement-badge svg {
+  flex-shrink: 0;
+}
+.settlement-badge.is-pending,
+.settlement-badge.is-practice {
+  background: #eee4cc;
+  border-color: #c6b68d;
+  color: #6b582a;
+}
+.rush-screen .settlement-badge {
+  background: linear-gradient(135deg, #334e32, #203d2c);
+  border-color: #769564;
+  color: #d8efc6;
+}
+.rush-screen .settlement-badge.is-pending,
+.rush-screen .settlement-badge.is-practice {
+  background: #3a3d25;
+  border-color: #897344;
+  color: #eed8a0;
+}
+.rush-result .settlement-badge {
+  font-size: 11px;
+  letter-spacing: 0.2px;
 }
 .reward-labels,
 .reward-row {

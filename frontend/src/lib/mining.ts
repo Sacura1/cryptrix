@@ -89,6 +89,22 @@ export function replayStart(replay?: MineReplay) {
   );
   return first ? Math.max(0, first.elapsedMs - 1000) : 0;
 }
+export function miningHasStarted(state: MineState) {
+  return (
+    state.players.some((player) => player.sequence > 0 || player.job !== null) ||
+    state.events.some((event) => event.agentId)
+  );
+}
+export function replayDiscoveries(replay: MineReplay): MineEvent[] {
+  const events = new Map<number, MineEvent>();
+  // Each frame contains a rolling event window; keep every discovery exactly once.
+  for (const frame of [replay.initialState, ...replay.frames]) {
+    for (const event of frame.events) {
+      if (event.kind !== 'job' && event.kind !== 'dig') events.set(event.id, event);
+    }
+  }
+  return [...events.values()].sort((a, b) => a.at - b.at || a.id - b.id);
+}
 export function replayMine(replay: MineReplay, elapsed: number): MineState {
   const index = Math.min(replay.frames.length - 1, Math.floor(elapsed / 1000) - 1);
   const frame = index >= 0 ? replay.frames[index] : replay.initialState;

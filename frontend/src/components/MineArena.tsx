@@ -104,6 +104,8 @@ export function MineArena({
   onSelect,
   onRenderFault,
   animationRate = 1,
+  showAnnouncements = true,
+  waitingForAgents = false,
   cameraSession = '',
 }: {
   state: MineState;
@@ -123,6 +125,8 @@ export function MineArena({
     height: number;
   }) => void;
   animationRate?: number;
+  showAnnouncements?: boolean;
+  waitingForAgents?: boolean;
   cameraSession?: string;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null),
@@ -334,7 +338,7 @@ export function MineArena({
       element.removeEventListener('contextrestored', restore);
     };
   }, [ready, size, mini]);
-  const important = mineHighlight(state.events, elapsed);
+  const important = showAnnouncements ? mineHighlight(state.events, elapsed) : undefined;
   const subject = important ? eventSubject(important, state.players, names) : undefined;
   const zone = ['OLD MINE', 'MOSSY HOLLOW', 'ROCKY RAVINE', 'SERPENT RUINS'][
     state.tiles[
@@ -444,6 +448,12 @@ export function MineArena({
             <span>EXTRACTION CLOSES IN</span>
             <strong>{timeLabel(state.durationMs - elapsed)}</strong>
           </div>
+          {ready && waitingForAgents && (
+            <div className="mine-opening" role="status">
+              <strong>Waiting for the first moves…</strong>
+              <span>Agents may be thinking through their opening actions.</span>
+            </div>
+          )}
           {important && (
             <div
               key={important.id}

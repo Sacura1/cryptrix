@@ -374,6 +374,70 @@
   font-size: 12px;
   line-height: 1.7;
 }
+.rush-details .rush-mission p,
+.rush-mission li {
+  color: #eee5ca;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.rush-mission h3 {
+  margin-bottom: 8px;
+}
+.rush-details .rush-mission-intro {
+  margin: 0 0 20px;
+}
+.rush-mission-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 20px;
+  padding: 13px 8px;
+  border: 1px solid #8e754644;
+  background: #14281c80;
+  text-align: center;
+}
+.rush-mission-facts dt {
+  margin-bottom: 5px;
+  color: #c8bc97;
+  font-size: 10px;
+}
+.rush-mission-facts > div {
+  display: block;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+.rush-mission-facts > div + div {
+  border-left: 1px solid #8e754644;
+}
+.rush-mission-facts dd {
+  margin: 0;
+  text-align: center;
+  color: #fff1c8;
+  font: 700 20px 'Barlow Condensed';
+}
+.rush-mission-facts .usdc-amount {
+  font: 700 11px Manrope;
+}
+.rush-mission-section {
+  padding: 17px 0;
+  border-top: 1px solid #a0824444;
+}
+.rush-mission-section h4 {
+  margin: 0 0 7px;
+  color: #f9d98c;
+  font: 700 22px 'Barlow Condensed';
+}
+.rush-mission-section p {
+  margin: 0;
+}
+.rush-mission-section ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.rush-mission-section li + li {
+  margin-top: 8px;
+}
 .rush-details .note {
   color: #d9cd9f;
   background: #152c20;
@@ -532,8 +596,53 @@
   outline: 2px solid #f0c775;
   outline-offset: 3px;
 }
+.mine-opening {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(340px, calc(100% - 32px));
+  padding: 14px 18px;
+  border: 1px solid #b79856;
+  border-radius: 3px;
+  background: #17291ff2;
+  color: #fff1c8;
+  box-shadow: 0 6px 24px #07190e80;
+  text-align: center;
+  pointer-events: none;
+}
+.mine-opening strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+.mine-opening span {
+  display: block;
+  color: #ddd6b7;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.rush-result-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 48px 16px 24px;
+  background: #0a170db3;
+}
+.rush-result-overlay .rush-result {
+  position: relative;
+  inset: auto;
+  transform: none;
+  flex: none;
+  margin-block: auto;
+  width: min(540px, 100%);
+}
 .rush-result {
-  width: min(540px, 90%);
   padding: 28px;
   border: 2px solid #d0a755;
   border-radius: 2px;
@@ -568,6 +677,7 @@
   margin: 12px 0 18px;
   font: 800 43px 'Barlow Condensed';
   text-shadow: 0 3px #14271a;
+  overflow-wrap: anywhere;
 }
 .rush-result small {
   color: #d3c499;
@@ -586,6 +696,7 @@
   padding: 8px 5px;
   background: linear-gradient(#2b41282b, #142e2255);
   border-bottom: 3px solid #8f825c;
+  min-width: 0;
 }
 .rush-podium-place > span {
   font: 700 18px 'Barlow Condensed';
@@ -601,6 +712,8 @@
 .rush-podium-place strong {
   font: 700 19px 'Barlow Condensed';
   margin-top: 5px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 .rush-podium-place > b {
   color: #ffe19b;
@@ -851,9 +964,61 @@
     max-width: 40px;
   }
 }
+@media (max-width: 600px) and (max-height: 700px) {
+  .rush-result-overlay {
+    padding: 36px 16px 16px;
+  }
+  .rush-result {
+    padding: 16px 12px;
+  }
+  .rush-result-gem {
+    width: 40px;
+    height: 40px;
+    margin: -34px auto 8px;
+    font-size: 24px;
+  }
+  .rush-result h1 {
+    font-size: 28px;
+    margin: 10px 0;
+  }
+  .rush-podium {
+    gap: 6px;
+    margin: 8px 0 12px;
+  }
+  .rush-podium-place {
+    padding: 6px 4px;
+  }
+  .rush-podium-place.place-1 {
+    padding-top: 12px;
+  }
+  .rush-podium-place .rush-portrait {
+    width: 36px;
+    height: 40px;
+  }
+  .rush-podium-place strong {
+    font-size: 14px;
+  }
+  .rush-podium-place > span {
+    font-size: 14px;
+  }
+  .rush-podium-place > b {
+    font-size: 18px;
+  }
+  .rush-result .button-row {
+    margin-top: 12px;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .mine-announcement {
     animation: none;
+  }
+}
+@media (max-height: 500px) and (max-width: 900px) {
+  .mine-opening {
+    top: auto;
+    bottom: 12px;
+    transform: translateX(-50%);
+    padding: 10px 14px;
   }
 }
 /* Give mobile leaders their own dock; announcements stay inside the mine above it. */
