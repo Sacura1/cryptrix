@@ -13,6 +13,8 @@ export const MAX_ROUNDS = 20;
 export const ROUND_MS = 30_000;
 export const FILL_MS = 15 * 60_000;
 export const PLAY_SECONDS = 3600;
+// Escrow v4 deducts this fee before allocating prizes; replay amounts remain gross.
+export const PLATFORM_FEE_BPS = 100;
 
 export class Fault extends Error {
   constructor(public status: number, public code: string, message: string, public details?: unknown) { super(message); }
@@ -58,11 +60,13 @@ export const legacyRules = (game: GameId) => ({
 export const rules = (game: GameId, protocolVersion = 3) => protocolVersion === 1 ? legacyRules(game) : ({ ...legacyRules(game), protocolVersion, stakeMin: protocolVersion === 2 ? '1.000000' : '0.500000', stakeMax: '5.000000', stakes: protocolVersion === 2 ? LEGACY_STAKES : STAKES, entryStake: 'creator-selected' });
 
 // rankGroups are dense group IDs in original participant order, not ordinal positions.
-export function payoutUnits(game: GameId, stake: number, rankGroups: number[]): number[] {
+export function payoutUnits(game: GameId, stake: number, rankGroups: number[], feeBps = 0): number[] {
   requireThat(rankGroups.length === capacity(game), 'INVALID_RANKS', 'Wrong rank count.');
   const groups = [...new Set(rankGroups)].sort((a, b) => a - b);
   requireThat(groups.every((g, i) => g === i), 'INVALID_RANKS', 'Rank groups must start at zero without gaps.');
-  const pot = stake * rankGroups.length;
+  requireThat(Number.isInteger(feeBps) && feeBps >= 0 && feeBps < 10000, 'INVALID_FEE', 'Invalid prize fee.');
+  const grossPot = stake * rankGroups.length;
+  const pot = grossPot - Math.floor(grossPot * feeBps / 10000);
   const prizes = game === 'flux-duel' ? [pot] : [Math.floor(pot * 60 / 100), Math.floor(pot * 25 / 100), pot - Math.floor(pot * 60 / 100) - Math.floor(pot * 25 / 100)];
   const payouts = rankGroups.map(() => 0);
   let position = 0;

@@ -85,6 +85,7 @@
   display: grid;
   place-items: center;
   background: #343c2deb;
+  color: #fff1d4;
 }
 .mine-location {
   position: absolute;

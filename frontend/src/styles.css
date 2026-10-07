@@ -418,7 +418,8 @@ summary:focus-visible,
 .hero-copy p {
   font-size: 15px;
   margin-bottom: 25px;
-  color: var(--muted);
+  color: var(--ink);
+  font-weight: 500;
 }
 .hero-footnote {
   display: flex;

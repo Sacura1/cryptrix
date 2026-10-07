@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { getAddress, type Hex } from 'viem';
 import { z } from 'zod';
-import { capacity, Fault, MAX_OPEN_ROOMS, digest, equipmentCommitment, readEquipmentIntent, FILL_MS, formatUsdc, GAME_IDS, MAX_STAKE, MIN_STAKE, parseUsdc, payoutUnits, requireThat, ROUND_MS, rules, stakeFor, type Agent, type Entry, type GameId, type Match } from './domain.js';
+import { capacity, Fault, MAX_OPEN_ROOMS, digest, equipmentCommitment, readEquipmentIntent, FILL_MS, formatUsdc, GAME_IDS, MAX_STAKE, MIN_STAKE, parseUsdc, payoutUnits, PLATFORM_FEE_BPS, requireThat, ROUND_MS, rules, stakeFor, type Agent, type Entry, type GameId, type Match } from './domain.js';
 import { actionSchema, defaultEquipment, equipmentSchema, initialise, observation, publicState, resolveRound, validateAction } from './engine.js';
 import { Auth, newToken } from './auth.js';
 import type { ChainGateway, ChainSnapshot } from './chain.js';
@@ -253,6 +253,8 @@ export class Platform {
   summary(match: Match) {
     const liveEvents = match.history.at(-1)?.events ?? [];
     const funded = match.chainParticipants?.length ?? match.entries.length;
+    const payouts = match.mode === 'paid' && match.ranks && match.payouts
+      ? payoutUnits(match.game, match.stake, match.ranks, PLATFORM_FEE_BPS) : match.payouts;
     return { id: match.id, title: match.title || (match.game === 'cache-rush' ? 'Cache Rush' : 'Flux Duel'), game: match.game, mode: match.mode, status: match.status, stake: formatUsdc(match.stake), pot: formatUsdc(match.stake * funded), capacity: capacity(match.game), filled: funded, awaitingEquipment: match.blockedEntries ?? [], fundingDeadline: match.fundingDeadline, fillDeadline: match.fillDeadline, createdAt: match.createdAt, roundDeadline: match.roundDeadline, escrowResolveDeadline: match.chainResolveDeadline, refundAvailable: match.mode === 'paid' && ((match.chainStatus === 1 && match.fillDeadline <= this.now()) || (match.chainStatus === 2 && !!match.chainResolveDeadline && match.chainResolveDeadline <= this.now())), seedCommitment: match.commitment, rulesHash: match.rulesHash,
       engineVersion: match.engineVersion,
       participants: match.entries.map(e => ({ agentId: e.agentId, name: this.store.agent(e.agentId).name, wallet: e.wallet })), state: match.mining ? publicMining(match.mining.world) : match.state ? publicState(match.state) : null,
@@ -260,7 +262,7 @@ export class Platform {
       resolvedActions: match.game === 'flux-duel' ? match.history.at(-1)?.actions : undefined,
       minimumRoundMs: this.minimumRoundMs,
       earliestResolveAt: match.status === 'active' ? match.roundDeadline! - ROUND_MS + this.minimumRoundMs : null,
-      payouts: match.payouts?.map((amount, i) => ({ agentId: match.entries[i]!.agentId, wallet: match.entries[i]!.wallet, rankGroup: match.ranks![i], amount: formatUsdc(amount) })), resultHash: match.resultHash, settlement: match.settlement,
+      payouts: payouts?.map((amount, i) => ({ agentId: match.entries[i]!.agentId, wallet: match.entries[i]!.wallet, rankGroup: match.ranks![i], amount: formatUsdc(amount) })), resultHash: match.resultHash, settlement: match.settlement,
       notice: match.mode === 'practice' ? 'Practice: amounts are simulated. No USDC is staked or paid.' : 'Paid: entry requires confirmed escrow funding. Settlement depends on the disclosed resolver.' };
   }
   observe(agentId: string, matchId: string) {

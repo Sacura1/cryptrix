@@ -1,5 +1,5 @@
 import { formatUnits } from 'viem';
-import { payoutUnits } from './domain.js';
+import { payoutUnits, PLATFORM_FEE_BPS } from './domain.js';
 import type { Platform } from './platform.js';
 
 interface Receipt { transactionHash: string; amount: string; allocatedAmount: string; blockNumber: string }
@@ -51,7 +51,7 @@ export class PublicArena {
       if (event.name === 'MatchStarted') match.started = true;
       if (event.name === 'MatchSettled') {
         match.settlementHash = event.transactionHash;
-        payoutUnits(match.game, match.stake, args.rankGroups.map(Number)).forEach((amount, index) => add(match, match.wallets[index]!, BigInt(amount)));
+        payoutUnits(match.game, match.stake, args.rankGroups.map(Number), PLATFORM_FEE_BPS).forEach((amount, index) => add(match, match.wallets[index]!, BigInt(amount)));
       }
       if (event.name === 'MatchCancelled') for (const wallet of match.wallets) add(match, wallet, BigInt(match.stake));
     }
@@ -59,9 +59,11 @@ export class PublicArena {
   }
   transfers(id: string) {
     const match = this.platform.store.match(id), ledger = this.ledger();
+    const payouts = match.mode === 'paid' && match.ranks && match.payouts
+      ? payoutUnits(match.game, match.stake, match.ranks, PLATFORM_FEE_BPS) : match.payouts ?? [];
     return {
       chainId: this.platform.chain?.chainId ?? null, settlementHash: ledger.matches.get(id.toLowerCase())?.settlementHash ?? null,
-      payouts: (match.payouts ?? []).map((amount, index) => {
+      payouts: payouts.map((amount, index) => {
         const entry = match.entries[index]!;
         const credit = ledger.credits.find(c => c.matchId === id.toLowerCase() && c.wallet === entry.wallet.toLowerCase());
         return { agentId: entry.agentId, wallet: entry.wallet, amount: formatUnits(BigInt(amount), 6),

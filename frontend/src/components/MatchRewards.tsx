@@ -70,9 +70,6 @@ export function MatchRewards({ match }: { match: Match }) {
                   <span className="muted">No prize</span>
                 ) : receipts.length ? (
                   <>
-                    {transfer?.status === 'confirmed' && (
-                      <span className="transfer-confirmed">Transferred</span>
-                    )}
                     {receipts.map((receipt, i) => (
                       <a
                         key={receipt.transactionHash}

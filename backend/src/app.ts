@@ -3,7 +3,7 @@ import Fastify, { type FastifyRequest, type FastifyServerOptions } from 'fastify
 import rateLimit from '@fastify/rate-limit';
 import { z, ZodError } from 'zod';
 import type { Hex } from 'viem';
-import { Fault, STAKES, MAX_OPEN_ROOMS, GAME_IDS, readEquipmentIntent, rules } from './domain.js';
+import { Fault, STAKES, MAX_OPEN_ROOMS, GAME_IDS, readEquipmentIntent, rules, PLATFORM_FEE_BPS } from './domain.js';
 import { USDC, type ChainGateway } from './chain.js';
 import { Platform } from './platform.js';
 import { Store } from './store.js';
@@ -70,7 +70,7 @@ export async function buildApp(options: AppOptions = {}) {
     const result = options.readiness?.() ?? { ready: true, checks: { database: true } };
     return reply.code(result.ready ? 200 : 503).send({ ...result, mode: platform.mode });
   });
-  app.get('/config', () => ({ mode: platform.mode, chainId: platform.chain?.chainId ?? null, escrow: platform.chain?.escrow ?? null, usdc: platform.chain ? USDC : null, usdcDecimals: 6, stakes: STAKES, maxOpenRooms: MAX_OPEN_ROOMS, roomSize: 8, fillWindowMs: 900000, fundingWindowMs: 120000, publicSpectating: true, resultVerification: 'Server replay checked before trusted resolver signs', randomness: 'Server CSPRNG committed with offer; operator remains trusted' }));
+  app.get('/config', () => ({ mode: platform.mode, chainId: platform.chain?.chainId ?? null, escrow: platform.chain?.escrow ?? null, usdc: platform.chain ? USDC : null, usdcDecimals: 6, stakes: STAKES, platformFeeBps: platform.mode === 'paid' ? PLATFORM_FEE_BPS : 0, maxOpenRooms: MAX_OPEN_ROOMS, roomSize: 8, fillWindowMs: 900000, fundingWindowMs: 120000, publicSpectating: true, resultVerification: 'Server replay checked before trusted resolver signs', randomness: 'Server CSPRNG committed with offer; operator remains trusted' }));
   app.get('/arena/stats', () => publicArena.stats());
   app.get('/matches/:id/transfers', req => publicArena.transfers(matchId(req)));
   const ops = (req: FastifyRequest) => {
