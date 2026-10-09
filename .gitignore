@@ -5,6 +5,9 @@ data/
 .env*
 !.env.example
 !.env.signer.example
+!.env.mainnet.example
+!.env.mainnet.api.example
+!.env.mainnet.signer.example
 *.key
 *.keystore
 coverage/
@@ -19,12 +22,12 @@ frontend/scripts/.render-arena.mjs
 /backend/contracts/test/
 /backend/scripts/*
 !/backend/scripts/compile-contracts.ts
-!/backend/scripts/deploy-arc.ts
-!/backend/scripts/verify-arc.ts
 !/backend/scripts/arc-check.ts
 !/backend/scripts/backup.ts
+!/backend/scripts/deploy-mainnet.ts
+!/backend/scripts/verify-mainnet.ts
 /backend/README.md
-/backend/contracts/legacy/*.md
+/backend/contracts/legacy/
 /frontend/tests/
 /frontend/scripts/
 /frontend/src/pages/LiveModelTest.tsx
@@ -34,10 +37,10 @@ frontend/scripts/.render-arena.mjs
 /frontend/public/art/miners-walk.webp
 /frontend/public/mark.svg
 /frontend/README.md
+/frontend/.env.mainnet.example
 # Keep working notes and test reports local; retain deployment addresses for recovery.
 /docs/*
 !/docs/deployments/
 /docs/deployments/*
 !/docs/deployments/arc-testnet.json
-!/docs/deployments/arc-testnet-v1.json
-!/docs/deployments/arc-testnet-v2.json
+!/docs/deployments/arc-mainnet.json

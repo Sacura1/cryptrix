@@ -1,0 +1,22 @@
+{
+  "network": "Arc mainnet",
+  "chainId": 5042,
+  "usdc": "0x3600000000000000000000000000000000000000",
+  "version": 4,
+  "escrow": "0x8d6ffEAc1d7Ad349CdC2CA4F7541D9429207b272",
+  "deployer": "0xB81a7FeaC01dE2EA5a3367D44331743F6442C6b9",
+  "resolver": "0xE579ad958Bc727bEe958965f54893446416b5191",
+  "keeper": "0xC265164483835E7342FBF3306C5fD4202a5B88CA",
+  "feeOwner": "0xB81a7FeaC01dE2EA5a3367D44331743F6442C6b9",
+  "feeRecipient": "0xB81a7FeaC01dE2EA5a3367D44331743F6442C6b9",
+  "feeBps": 100,
+  "signerNamespace": "signer:mainnet:v4",
+  "escrowDeploymentBlock": "25062855",
+  "escrowTransaction": "0x76b3f86de625670ed17db297fb200427ca4115f821daa1f544556edc868ffd4b",
+  "bytecodeHash": "0x0e60bcd040a7fda83bcce5fc8803724c5240f10c2ed72c693b14cbc19f461a0b",
+  "compiler": "0.8.30+commit.73712a01.Emscripten.clang",
+  "evmVersion": "cancun",
+  "optimizerRuns": 200,
+  "viaIR": true,
+  "audited": false
+}

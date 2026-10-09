@@ -448,7 +448,7 @@ export function RushMatch({
               <span>EXTRACTION CLOSED</span>
               <h1>
                 {standings[0]
-                  ? `${names[standings[0].id]} ${standings.filter((p) => p.deposited === standings[0].deposited).length > 1 ? '& tied miners lead' : 'takes first'}.`
+                  ? `${names[standings[0].id]} ${standings.filter((p) => p.deposited === standings[0].deposited).length > 1 ? '& tied miners lead' : 'takes 1st'}.`
                   : 'Expedition complete.'}
               </h1>
               <div className="rush-podium">

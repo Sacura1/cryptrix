@@ -5,14 +5,19 @@ import solc from 'solc';
 import type { Abi, Hex } from 'viem';
 
 export interface Artifact { abi: Abi; bytecode: Hex }
-export function compileContracts(): Record<string, Artifact> {
-  const sources = Object.fromEntries(['GameEscrow.sol', 'test/MockUSDC.sol'].filter(name => existsSync(`contracts/${name}`)).map(name => [`contracts/${name}`, { content: readFileSync(`contracts/${name}`, 'utf8').replace(/\r\n/g, '\n') }]));
-  const result = JSON.parse(solc.compile(JSON.stringify({ language: 'Solidity', sources, settings: {
+export function compileBuild(escrowOnly = false) {
+  const sources: Record<string, { content: string }> = Object.fromEntries((escrowOnly ? ['GameEscrow.sol'] : ['GameEscrow.sol', 'test/MockUSDC.sol']).filter(name => existsSync(`contracts/${name}`)).map(name => [`contracts/${name}`, { content: readFileSync(`contracts/${name}`, 'utf8').replace(/\r\n/g, '\n') }]));
+  const input = { language: 'Solidity', sources, settings: {
     // OpenZeppelin's current libraries use MCOPY. Arc's Osaka baseline supports Cancun.
     evmVersion: 'cancun', optimizer: { enabled: true, runs: 200 }, viaIR: true,
     outputSelection: { '*': { '*': ['abi', 'evm.bytecode.object'] } },
-  } }), { import: (path: string) => {
-    try { return { contents: readFileSync(resolve('node_modules', path), 'utf8').replace(/\r\n/g, '\n') }; }
+  } };
+  const result = JSON.parse(solc.compile(JSON.stringify(input), { import: (path: string) => {
+    try {
+      const contents = readFileSync(resolve('node_modules', path), 'utf8').replace(/\r\n/g, '\n');
+      sources[path] = { content: contents };
+      return { contents };
+    }
     catch { return { error: `Import not found: ${path}` }; }
   } }));
   const errors = (result.errors ?? []).filter((e: { severity: string }) => e.severity === 'error');
@@ -21,8 +26,9 @@ export function compileContracts(): Record<string, Artifact> {
   for (const contracts of Object.values(result.contracts) as Record<string, { abi: Abi; evm: { bytecode: { object: string } } }>[]) {
     for (const [name, contract] of Object.entries(contracts)) if (contract.evm.bytecode.object) artifacts[name] = { abi: contract.abi, bytecode: `0x${contract.evm.bytecode.object}` };
   }
-  return artifacts;
+  return { artifacts, input, compiler: solc.version() as string };
 }
+export function compileContracts(): Record<string, Artifact> { return compileBuild().artifacts; }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   mkdirSync('artifacts', { recursive: true });
   const artifacts = compileContracts();

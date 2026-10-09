@@ -18,7 +18,8 @@
     "ui:dev": "npm --prefix frontend run dev",
     "ui:build": "npm --prefix frontend run build",
     "ui:preview": "npm --prefix frontend run preview",
-    "arc:deploy": "npm --prefix backend run arc:deploy",
-    "arc:verify": "npm --prefix backend run arc:verify"
+    "arc:mainnet:prepare": "npm --prefix backend run arc:mainnet:prepare",
+    "arc:mainnet:deploy": "npm --prefix backend run arc:mainnet:deploy --",
+    "arc:mainnet:verify": "npm --prefix backend run arc:mainnet:verify --"
   }
 }

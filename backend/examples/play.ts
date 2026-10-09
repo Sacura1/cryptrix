@@ -1,20 +1,23 @@
 import { privateKeyToAccount } from 'viem/accounts';
 import { parseUnits, type Hex } from 'viem';
 import { AgentClient, AgentApiError } from '../src/sdk.js';
-import { TestnetWalletAdapter } from './wallet-adapter.js';
+import { ArcWalletAdapter } from './wallet-adapter.js';
 import { decide } from './decision.js';
 
 const base = process.env.AGENT_API_URL ?? 'http://127.0.0.1:3011';
 const escrow = process.env.AGENT_ESCROW, secret = process.env.AGENT_PRIVATE_KEY;
 const stake = process.env.AGENT_STAKE ?? '0.5';
+const network = process.env.AGENT_NETWORK ?? 'testnet';
+if (network !== 'testnet' && network !== 'mainnet') throw new Error('AGENT_NETWORK must be testnet or mainnet.');
+const chainId = network === 'mainnet' ? 5042 : 5042002;
 if (!escrow || !secret || !['0.5', '1', '2', '3', '4', '5'].includes(stake)) throw new Error('Set AGENT_ESCROW, AGENT_PRIVATE_KEY and AGENT_STAKE to 0.5, 1, 2, 3, 4 or 5.');
 const response = await fetch(`${base.replace(/\/$/, '')}/config`);
 if (!response.ok) throw new Error('Cannot read game configuration');
 const config = await response.json() as any;
-if (config.chainId !== 5042002 || config.mode !== 'paid' || config.escrow?.toLowerCase() !== escrow.toLowerCase()) throw new Error('Configured deployment does not match wallet policy');
+if (config.chainId !== chainId || config.mode !== 'paid' || config.escrow?.toLowerCase() !== escrow.toLowerCase()) throw new Error('Configured deployment does not match wallet policy');
 const account = privateKeyToAccount((secret.startsWith('0x') ? secret : `0x${secret}`) as Hex);
 delete process.env.AGENT_PRIVATE_KEY;
-const wallet = new TestnetWalletAdapter(account, escrow, process.env.AGENT_JOURNAL ?? `./data/external-${account.address}.json`, process.env.ARC_RPC_URL, parseUnits(stake, 6));
+const wallet = new ArcWalletAdapter(account, escrow, process.env.AGENT_JOURNAL ?? `./data/external-${network === 'mainnet' ? 'mainnet-' : ''}${account.address}.json`, process.env.ARC_RPC_URL, parseUnits(stake, 6), network);
 const client = await AgentClient.connect(base, wallet);
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 let match;

@@ -17,8 +17,8 @@
   "include": [
     "src/**/*.ts",
     "scripts/compile-contracts.ts",
-    "scripts/deploy-arc.ts",
-    "scripts/verify-arc.ts",
+    "scripts/deploy-mainnet.ts",
+    "scripts/verify-mainnet.ts",
     "scripts/arc-check.ts",
     "scripts/backup.ts",
     "examples/**/*.ts"

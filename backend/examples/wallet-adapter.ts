@@ -1,30 +1,33 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync, renameSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { createPublicClient, createWalletClient, decodeFunctionData, getAddress, http, keccak256, parseAbi, type Hex, type PrivateKeyAccount } from 'viem';
-import { arcTestnet } from 'viem/chains';
+import { createPublicClient, createWalletClient, decodeFunctionData, getAddress, http, keccak256, parseAbi, type Chain, type Hex, type PrivateKeyAccount } from 'viem';
+import { arc, arcTestnet } from 'viem/chains';
 import { escrowAbi, USDC, type TransactionIntent } from '../src/chain.js';
 import type { WalletAdapter } from '../src/sdk.js';
 
 const approvalAbi = parseAbi(['function approve(address spender,uint256 amount) returns (bool)']);
 /** Example for one external agent process. Keep the journal private and use one writer per wallet. */
-export class TestnetWalletAdapter implements WalletAdapter {
+export class ArcWalletAdapter implements WalletAdapter {
   readonly address: string;
+  readonly chainId: number;
   readonly client;
   readonly wallet;
-  constructor(readonly account: PrivateKeyAccount, readonly escrow: string, readonly journalPath: string, rpc?: string, readonly maxStake = 5_000_000n) {
+  constructor(readonly account: PrivateKeyAccount, readonly escrow: string, readonly journalPath: string, rpc?: string, readonly maxStake = 5_000_000n, network: 'mainnet' | 'testnet' = 'testnet') {
+    const chain: Chain = network === 'mainnet' ? arc : arcTestnet;
+    this.chainId = chain.id;
     this.address = account.address;
-    this.client = createPublicClient({ chain: arcTestnet, transport: http(rpc, { retryCount: 1 }) });
-    this.wallet = createWalletClient({ account, chain: arcTestnet, transport: http(rpc, { retryCount: 0 }) });
+    this.client = createPublicClient({ chain, transport: http(rpc, { retryCount: 1 }) });
+    this.wallet = createWalletClient({ account, chain, transport: http(rpc, { retryCount: 0 }) });
   }
   signMessage(message: string) { return this.account.signMessage({ message }); }
   async sendAndWait(transactions: TransactionIntent[], operationId: string): Promise<Hex> {
-    if (await this.client.getChainId() !== 5042002) throw new Error('Wrong network');
+    if (await this.client.getChainId() !== this.chainId) throw new Error('Wrong network');
     mkdirSync(dirname(this.journalPath), { recursive: true });
     const journal = existsSync(this.journalPath) ? JSON.parse(readFileSync(this.journalPath, 'utf8')) : {};
     const save = () => { const temp = `${this.journalPath}.tmp`; writeFileSync(temp, JSON.stringify(journal), { mode: 0o600 }); renameSync(temp, this.journalPath); };
     let last: Hex | undefined;
     for (const [index, tx] of transactions.entries()) {
-      if (tx.chainId !== 5042002 || tx.value !== '0') throw new Error('Invalid transaction terms');
+      if (tx.chainId !== this.chainId || tx.value !== '0') throw new Error('Invalid transaction terms');
       if (tx.amountUnits && (BigInt(tx.amountUnits) < 500_000n || BigInt(tx.amountUnits) > this.maxStake || (BigInt(tx.amountUnits) !== 500_000n && BigInt(tx.amountUnits) % 1_000_000n !== 0n))) throw new Error('Stake outside wallet policy');
       if (tx.to.toLowerCase() === USDC.toLowerCase()) {
         const decoded = decodeFunctionData({ abi: approvalAbi, data: tx.data });
@@ -63,3 +66,5 @@ export class TestnetWalletAdapter implements WalletAdapter {
     return last;
   }
 }
+// Preserve the original testnet example import for existing local clients.
+export { ArcWalletAdapter as TestnetWalletAdapter };

@@ -5,7 +5,7 @@ import { Icon } from './ui';
 
 const CHAIN_LABELS: Record<number, { label: string; network: string }> = {
   5042002: { label: 'ARC', network: 'TESTNET' },
-  4227552942: { label: 'ARC', network: 'MAINNET' },
+  5042: { label: 'ARC', network: 'MAINNET' },
 };
 
 function NetworkBadge({ chainId }: { chainId: number | null }) {

@@ -21,10 +21,11 @@
     "signer:start": "node --env-file-if-exists=.env.signer dist/src/signer-server.js",
     "backup": "node --env-file-if-exists=.env --import tsx scripts/backup.ts",
     "arc:check": "node --env-file-if-exists=.env --import tsx scripts/arc-check.ts",
-    "arc:deploy": "node --env-file-if-exists=.env --import tsx scripts/deploy-arc.ts",
     "check": "npm run typecheck",
     "agent:example": "node --env-file-if-exists=.env.agent --import tsx examples/play.ts",
-    "arc:verify": "node --env-file-if-exists=.env --import tsx scripts/verify-arc.ts"
+    "arc:mainnet:prepare": "node --env-file-if-exists=.env.mainnet --import tsx scripts/deploy-mainnet.ts --init",
+    "arc:mainnet:deploy": "node --env-file-if-exists=.env.mainnet --import tsx scripts/deploy-mainnet.ts",
+    "arc:mainnet:verify": "node --env-file-if-exists=.env.mainnet --import tsx scripts/verify-mainnet.ts"
   },
   "dependencies": {
     "@fastify/rate-limit": "^11.2.0",
