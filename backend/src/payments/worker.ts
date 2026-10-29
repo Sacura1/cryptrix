@@ -163,7 +163,7 @@ export class PaymentWorker {
     }
     let raw = job.raw_tx;
     if (!raw) {
-      await store.flush();
+      await store.flush(true);
       raw = await this.signer.provider.sign(payload.scope, job.key, unsigned, payload.context);
       const checked = await validateSigned(raw, unsigned, sender);
       this.live(job);
@@ -173,7 +173,7 @@ export class PaymentWorker {
     if (this.closing) { this.update(job, 'retry', 'SHUTDOWN', 1000); return; }
     this.live(job);
     requireThat(!payload.deadline || payload.deadline > now(), 'OPERATION_EXPIRED', 'Signing finished after the operation deadline.', 409);
-    await store.flush();
+    await store.flush(true);
     const hash = await this.chain.client.sendRawTransaction({ serializedTransaction: raw });
     requireThat(hash.toLowerCase() === job.hash!.toLowerCase(), 'SIGNED_TRANSACTION_CHANGED', 'RPC returned a different transaction hash.', 503);
     this.update(job, 'broadcast', undefined, 1000);

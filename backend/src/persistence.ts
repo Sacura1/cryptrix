@@ -17,7 +17,8 @@ export interface WriterStartupOptions {
 /** A single authoritative simulation process, with asynchronous PostgreSQL durability.
  * SQLite is a disposable local state engine. Postgres holds checkpoints and a fenced
  * changeset journal. Never acknowledge a mutation or broadcast before flush().
- * One active writer per namespace; other instances fail closed rather than diverge.
+ * Ownership is renewed by writes, not idle heartbeats. An expired owner may resume
+ * only while its unique token still matches; a takeover permanently fences it out.
  */
 export class NeonPersistence {
   readonly directory = mkdtempSync(join(tmpdir(), 'cryptrix-state-'));
@@ -29,7 +30,6 @@ export class NeonPersistence {
   private queue: Promise<void> = Promise.resolve();
   private flushing = false;
   private nextFlush?: Promise<void>;
-  private heartbeat?: ReturnType<typeof setInterval>;
   private fault?: Error;
   private checkpointAt = Date.now();
   private closing = false;
@@ -98,24 +98,19 @@ export class NeonPersistence {
         WHERE namespace=$1 AND seq>(SELECT checkpoint_seq FROM cryptrix_state WHERE namespace=$1) ORDER BY seq`, [this.namespace]);
       for (const row of result.rows) if (!db.applyChangeset(inflateSync(row.payload))) throw new Error('NEON_RESTORE_CONFLICT');
       this.session = db.createSession();
-      this.heartbeat = setInterval(() => {
-        if (this.fault || this.closing) return;
-        void this.pool.query(`UPDATE cryptrix_state SET lease_until=NOW()+INTERVAL '120 seconds'
-          WHERE namespace=$1 AND owner=$2 AND lease_until>NOW()`, [this.namespace, this.owner])
-          .then(r => { if (!r.rowCount) this.fault = new Error('NEON_WRITER_LEASE_LOST'); })
-          .catch(() => { this.fault = new Error('NEON_WRITER_LEASE_LOST'); });
-      }, 20000);
-      this.heartbeat.unref();
     } catch { await this.close(); throw new Error('NEON_RESTORE_FAILED'); }
   }
   get healthy(): boolean { return !this.fault && !this.closing; }
-  async flush(): Promise<void> {
+  async flush(verifyOwnership = false): Promise<void> {
     if (this.fault) throw this.fault;
     if (!this.db || !this.session || this.closing) throw new Error('NEON_STORAGE_CLOSED');
     if (this.db.isTransaction) throw new Error('Flush must follow the local transaction commit');
     // Coalesce callers arriving during a write into one following durability barrier.
     // Each caller still waits for a commit containing all changes made before its call.
     if (this.flushing) {
+      // A caller about to acknowledge a mutation or broadcast must perform its
+      // own ownership barrier, even if the preceding flush captured its changes.
+      if (verifyOwnership) { await this.queue; return this.flush(true); }
       if (!this.nextFlush) this.nextFlush = this.queue.then(() => {
         this.nextFlush = undefined;
         return this.flush();
@@ -124,10 +119,10 @@ export class NeonPersistence {
     }
     const changes = this.session.changeset();
     this.session.close(); this.session = this.db.createSession();
-    if (!changes.length) return this.queue;
+    if (!changes.length && !verifyOwnership) return this.queue;
     const payload = deflateSync(changes, { level: 3 });
     let snapshot: Buffer | undefined;
-    if (Date.now() - this.checkpointAt >= 60000) {
+    if (changes.length && Date.now() - this.checkpointAt >= 60000) {
       // Snapshot and captured changes belong to this exact synchronous state boundary.
       const file = join(this.directory, `checkpoint-${randomUUID()}.sqlite`);
       this.db.exec(`VACUUM INTO '${file.replaceAll("'", "''")}'`);
@@ -139,14 +134,16 @@ export class NeonPersistence {
       const client = await this.pool.connect();
       try {
         await client.query('BEGIN');
-        const result = await client.query(`UPDATE cryptrix_state SET seq=seq+1,lease_until=NOW()+INTERVAL '120 seconds'
-          WHERE namespace=$1 AND owner=$2 AND lease_until>NOW() RETURNING seq`, [this.namespace, this.owner]);
+        // The row lock makes resumption race safely with startup takeover. Never
+        // reclaim a different owner's token, even after that owner's lease expires.
+        const result = await client.query(`UPDATE cryptrix_state SET seq=seq+$3,lease_until=NOW()+INTERVAL '120 seconds'
+          WHERE namespace=$1 AND owner=$2 RETURNING seq`, [this.namespace, this.owner, changes.length ? 1 : 0]);
         if (!result.rowCount) throw new Error('NEON_WRITER_LEASE_LOST');
         const seq = result.rows[0].seq;
         if (snapshot) {
           await client.query('UPDATE cryptrix_state SET checkpoint_seq=$3,snapshot=$4 WHERE namespace=$1 AND owner=$2', [this.namespace,this.owner,seq,snapshot]);
           await client.query('DELETE FROM cryptrix_journal WHERE namespace=$1 AND seq<=$2', [this.namespace,seq]);
-        } else await client.query('INSERT INTO cryptrix_journal(namespace,seq,payload) VALUES($1,$2,$3)', [this.namespace,seq,payload]);
+        } else if (changes.length) await client.query('INSERT INTO cryptrix_journal(namespace,seq,payload) VALUES($1,$2,$3)', [this.namespace,seq,payload]);
         await client.query('COMMIT');
       } catch {
         await client.query('ROLLBACK').catch(() => {});
@@ -159,7 +156,6 @@ export class NeonPersistence {
     if (this.closing) return;
     if (this.session && !this.fault) await this.flush().catch(() => {});
     this.closing = true;
-    if (this.heartbeat) clearInterval(this.heartbeat);
     this.session?.close();
     await this.queue.catch(() => {});
     await this.pool.query('UPDATE cryptrix_state SET owner=NULL,lease_until=NULL WHERE namespace=$1 AND owner=$2', [this.namespace,this.owner]).catch(() => {});

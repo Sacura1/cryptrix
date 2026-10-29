@@ -17,7 +17,8 @@ export class SignerKeystore {
     try { keys = new SignerKeystore(persistence.path, encryptionKey); await persistence.attach(keys.db); keys.persistence = persistence; return keys; }
     catch (error) { keys?.db.close(); await persistence.close(); persistence.cleanup(); throw error; }
   }
-  async flush() { await this.persistence?.flush(); }
+  // Signer callers may return cached signatures or broadcast already saved bytes.
+  async flush() { await this.persistence?.flush(true); }
   async shutdown() { await this.persistence?.close(); this.close(); this.persistence?.cleanup(); }
 
   constructor(path: string, private readonly encryptionKey: Buffer) {

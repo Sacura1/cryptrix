@@ -186,7 +186,7 @@ export async function buildApp(options: AppOptions = {}) {
   app.post('/runtime/matches/:id/commands', req => platform.command(runtime(req).id, matchId(req), key(req), req.body));
 
   app.addHook('preClose', async () => { for (const close of closeStreams) close(); });
-  app.addHook('onSend', async (_req, reply) => { if (!reply.raw.headersSent) await store.flush(); });
+  app.addHook('onSend', async (req, reply) => { if (!reply.raw.headersSent) await store.flush(reply.statusCode < 400 && !['GET', 'HEAD', 'OPTIONS'].includes(req.method)); });
   app.addHook('onClose', async () => { await store.shutdown(); });
   return { app, platform, store };
 }

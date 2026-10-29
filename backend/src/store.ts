@@ -13,17 +13,17 @@ export class Store {
     if (!url) return new Store(path);
     const persistence = await NeonPersistence.open(url, namespace, startup);
     let store: Store | undefined;
-    try { store = new Store(persistence.path); await persistence.attach(store.db); store.persistence = persistence; return store; }
+    try { store = new Store(persistence.path, true); await persistence.attach(store.db); store.persistence = persistence; return store; }
     catch (error) { store?.db.close(); await persistence.close(); persistence.cleanup(); throw error; }
   }
   get healthy(): boolean { return this.persistence?.healthy ?? true; }
-  async flush(): Promise<void> { await this.persistence?.flush(); }
+  async flush(verifyOwnership = false): Promise<void> { await this.persistence?.flush(verifyOwnership); }
   async shutdown(): Promise<void> { await this.persistence?.close(); this.close(); this.persistence?.cleanup(); }
 
   private readonly changeListeners = new Set<(matchId?: string) => void>();
   onChange(listener: (matchId?: string) => void): void { this.changeListeners.add(listener); }
   private changed(matchId?: string): void { for (const listener of this.changeListeners) listener(matchId); }
-  constructor(path = ':memory:') {
+  constructor(path = ':memory:', runtimeInMemory = false) {
     if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
     this.db = new DatabaseSync(path);
     const version = Number(this.db.prepare('PRAGMA user_version').get()?.user_version ?? 0);
@@ -58,6 +58,14 @@ export class Store {
     const jobColumns = new Set(this.db.prepare('PRAGMA table_info(jobs)').all().map(row => String(row.name)));
     for (const [name, type] of [['unsigned_tx', 'TEXT'], ['reserved_gas', 'TEXT'], ['fee_day', 'INTEGER']]) if (!jobColumns.has(name!)) this.db.exec(`ALTER TABLE jobs ADD COLUMN ${name} ${type}`);
     this.db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS reserved_nonce ON jobs(sender,nonce) WHERE unsigned_tx IS NOT NULL; PRAGMA user_version=${DATABASE_VERSION}; COMMIT;`);
+    // These coordinate workers inside this process, not separate PostgreSQL
+    // writers. TEMP tables are invisible to the main-database changeset journal
+    // and checkpoints, so health checks and empty clock ticks do not wake Neon.
+    // Keep the legacy main tables for replaying pre-upgrade journals unchanged.
+    if (runtimeInMemory) this.db.exec(`
+      CREATE TEMP TABLE leases(name TEXT PRIMARY KEY, holder TEXT NOT NULL, expires_at INTEGER NOT NULL, fence INTEGER NOT NULL);
+      CREATE TEMP TABLE service_status(name TEXT PRIMARY KEY,last_success INTEGER,failures INTEGER NOT NULL DEFAULT 0,error TEXT);
+    `);
   }
   transaction<T>(fn: () => T): T {
     this.db.exec('BEGIN IMMEDIATE');

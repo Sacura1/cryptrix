@@ -11,6 +11,7 @@ export class ChainIndexer {
   private running = false;
   private closing = false;
   private task?: Promise<void>;
+  private scannedCursor?: { block_number: string; block_hash: string };
   caughtUp = false;
   constructor(readonly platform: Platform, readonly chain: ArcGateway, readonly deploymentBlock: bigint, readonly batchSize = 500n) {
     requireThat(deploymentBlock >= 0n && batchSize > 0n && batchSize <= 2000n, 'INDEXER_CONFIG', 'Indexer needs a valid deployment block and bounded batch size.', 503);
@@ -27,7 +28,7 @@ export class ChainIndexer {
     if (!store.lease(lease, this.holder, now(), 120_000)) return;
     try {
       const address = this.chain.escrow.toLowerCase();
-      const cursor = store.db.prepare('SELECT * FROM chain_cursors WHERE chain_id=? AND address=?').get(this.chain.chainId, address);
+      const cursor = this.scannedCursor ?? store.db.prepare('SELECT * FROM chain_cursors WHERE chain_id=? AND address=?').get(this.chain.chainId, address);
       if (cursor) {
         const previous = await this.chain.client.getBlock({ blockNumber: BigInt(String(cursor.block_number)) });
         requireThat(previous.hash?.toLowerCase() === String(cursor.block_hash).toLowerCase(), 'CHAIN_HISTORY_CHANGED', 'Finalized index cursor changed; refusing to silently rewrite financial history.', 503);
@@ -41,6 +42,7 @@ export class ChainIndexer {
         this.chain.client.getLogs({ address: this.chain.escrow, fromBlock: from, toBlock: to }),
         this.chain.client.getBlock({ blockNumber: to }),
       ]);
+      requireThat(last.hash, 'INDEX_BLOCK_INVALID', 'Indexed block has no canonical hash.', 503);
       // Fetch blocks once per distinct log block, retaining canonical event timestamps.
       const blocks = new Map<string, { timestamp: number; hash: string | null }>();
       for (const number of [...new Set(logs.filter(l => l.blockNumber !== null).map(l => String(l.blockNumber)))]) {
@@ -50,18 +52,23 @@ export class ChainIndexer {
       store.transaction(() => {
         const owner = store.db.prepare('SELECT holder,expires_at FROM leases WHERE name=?').get(lease);
         requireThat(owner?.holder === this.holder && Number(owner.expires_at) > now(), 'INDEX_LEASE_LOST', 'A stale indexer cannot advance the cursor.');
+        let recordedEvent = false;
         for (const log of logs.sort((a, b) => Number(a.blockNumber! - b.blockNumber!) || a.logIndex! - b.logIndex!)) {
           if (log.removed || log.blockNumber === null || log.transactionHash === null || log.logIndex === null) continue;
           const block = blocks.get(String(log.blockNumber));
           requireThat(log.address.toLowerCase() === address && log.blockNumber >= from && log.blockNumber <= to && block && log.blockHash === block.hash, 'INDEX_LOG_INVALID', 'RPC returned a log outside the canonical escrow range.', 503);
           let event;
           try { event = decodeEventLog({ abi: escrowAbi, data: log.data, topics: log.topics }); } catch { continue; }
+          recordedEvent = true;
           const doc = { name: event.eventName, args: event.args, timestamp: block.timestamp, blockNumber: String(log.blockNumber), transactionHash: log.transactionHash, logIndex: log.logIndex };
           const inserted = store.db.prepare('INSERT OR IGNORE INTO chain_events VALUES(?,?,?,?,?,?)').run(this.chain.chainId, address, log.transactionHash.toLowerCase(), log.logIndex, String(log.blockNumber), json(doc));
           if (Number(inserted.changes)) this.apply(event.eventName, event.args as Record<string, any>);
         }
-        store.db.prepare('INSERT INTO chain_cursors VALUES(?,?,?,?) ON CONFLICT(chain_id,address) DO UPDATE SET block_number=excluded.block_number,block_hash=excluded.block_hash').run(this.chain.chainId, address, String(to), last.hash);
+        // Empty block progress stays in memory. Persist a cursor atomically with
+        // real events; after a restart the empty range is safely scanned again.
+        if (recordedEvent) store.db.prepare('INSERT INTO chain_cursors VALUES(?,?,?,?) ON CONFLICT(chain_id,address) DO UPDATE SET block_number=excluded.block_number,block_hash=excluded.block_hash').run(this.chain.chainId, address, String(to), last.hash);
       });
+      this.scannedCursor = { block_number: String(to), block_hash: last.hash };
       await this.reconcile(); store.service('indexer', now());
       this.caughtUp = to === latest.number;
     } catch (error) { this.caughtUp = false; store.service('indexer', now(), 'INDEXER_FAILED'); throw error; }
